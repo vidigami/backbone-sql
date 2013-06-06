@@ -41,7 +41,7 @@ module.exports = class SequelizeSync
     @connection.find(query)
       .success (model) =>
 #        console.log model.getPhotos
-        console.log model.getPhotos().success( (a) ->  console.log a; console.log arguments)
+#        console.log model.getPhotos().success( (a) ->  console.log a; console.log arguments)
         callback null, @backbone_adapter.sequelizeToModel(model, @model_type)
       .error (err) -> callback(err)
 

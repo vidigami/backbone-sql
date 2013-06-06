@@ -1,3 +1,3 @@
 module.exports =
   test:
-    url: 'mongodb://localhost:27017/test-mongo-backbone'
+    url: 'mysql://root:r2121@127.0.0.1:3306/vidigami_dev'
