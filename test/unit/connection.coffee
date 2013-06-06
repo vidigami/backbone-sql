@@ -102,6 +102,18 @@ describe 'Model methods', ->
         done()
 
 
+  it 'Cursor can chain limit and offset', (done) ->
+    limit = offset = 3
+    Album.cursor queries.album_name, (err, cursor) ->
+      assert.ok(!err, 'no errors')
+      assert.ok(cursor, 'gets a cursor')
+      cursor.limit(limit).offset(offset).toModels() (err, models) ->
+        assert.ok(!err, 'no errors')
+        assert.ok(models, 'cursor toModels gives us models')
+        assert.equal(models.length, limit, 'found models')
+        done()
+
+
   it 'Cursor can select fields', (done) ->
     limit = 3
     Album.cursor queries.album_name, (err, cursor) ->

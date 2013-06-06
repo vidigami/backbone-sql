@@ -3,6 +3,9 @@ module.exports =
   limit:
     $limit: 3
 
+  offset:
+    $offset: 2
+
   count:
     $count: true
 
