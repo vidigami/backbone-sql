@@ -26,7 +26,7 @@ describe 'Model methods', ->
 
 
   it 'Handles a find id query', (done) ->
-    Photo.find queries.photo_id, (err, model) ->
+    Photo.find queries.photo_id.id, (err, model) ->
       assert.ok(!err, 'no errors')
       assert.ok(model, 'gets a model')
       assert.equal(model.get('id'), queries.photo_id.id, 'model has the correct id')
@@ -34,18 +34,26 @@ describe 'Model methods', ->
 
 
   it 'Handles another find id query', (done) ->
-    Album.find queries.album_id, (err, model) ->
+    Album.find queries.album_id.id, (err, model) ->
       assert.ok(!err, 'no errors')
       assert.ok(model, 'gets a model')
       assert.equal(model.get('id'), queries.album_id.id, 'model has the correct id')
       done()
 
 
-  it 'Handles a name find query', (done) ->
-    Album.find queries.album_name, (err, model) ->
+  it 'Handles a find by query id', (done) ->
+    Photo.find queries.photo_id, (err, models) ->
       assert.ok(!err, 'no errors')
-      assert.ok(model, 'gets a model')
-      assert.equal(model.get('name'), queries.album_name.name, 'model has the correct name')
+      assert.ok(models.length, 'gets models')
+      done()
+
+
+  it 'Handles a name find query', (done) ->
+    Album.find queries.album_name, (err, models) ->
+      assert.ok(!err, 'no errors')
+      assert.ok(models.length, 'gets models')
+      for model in models
+        assert.equal(model.get('name'), queries.album_name.name, 'model has the correct name')
       done()
 
 
@@ -115,7 +123,6 @@ describe 'Model methods', ->
 
 
   it 'Cursor can select fields', (done) ->
-    limit = 3
     Album.cursor queries.album_name, (err, cursor) ->
       assert.ok(!err, 'no errors')
       assert.ok(cursor, 'gets a cursor')
