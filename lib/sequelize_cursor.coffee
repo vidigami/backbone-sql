@@ -17,8 +17,7 @@ module.exports = class SequelizeCursor extends Cursor
     # args._id = {$in: _.map(ids, (id) -> new ObjectID("#{id}"))} if @_cursor.$ids # TODO
     args = [find]
 
-    # only the count
-    return @connection.count(find).error(callback).success((count) -> callback(null, count)) if count or @_cursor.$count
+    return @connection.count(find).error(callback).success((count) -> callback(null, count)) if count or @_cursor.$count # only the count
 
     # only select specific fields
     if @_cursor.$values
@@ -33,9 +32,8 @@ module.exports = class SequelizeCursor extends Cursor
     # call
     @connection.findAll.apply(@connection, args)
       .error(callback)
-      .success (json) ->
-        return callback(null, if docs.length then @backbone_adapter.docToAttributes(docs[0]) else null) if @_cursor.$one
-        json = _.map(docs, (doc) => @backbone_adapter.docToAttributes(doc))
+      .success (json) =>
+        return callback(null, if json.length then json[0] else null) if @_cursor.$one
 
         # TODO: OPTIMIZE TO REMOVE 'id' and '_rev' if needed
         if @_cursor.$values

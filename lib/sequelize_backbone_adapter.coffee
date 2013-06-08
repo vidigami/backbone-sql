@@ -3,23 +3,20 @@ BackboneRelational = require './backbone_relational'
 module.exports = class SequelizeBackboneAdapter
   # todo: relations
 
-  @modelFindQuery: (model) -> return {where: {id: model.get('id')}}
-
-  @nativeToModel: (sequelize_model, model_type) ->
-    return if not sequelize_model
+  @nativeToModel: (seq_model, model_type) ->
+    return if not seq_model
 
     # work around for Backbone Relational
-    model = BackboneRelational.findOrCreate(model_type, (new model_type()).parse(@nativeToAttributes(doc)))
-    model._db_model = sequelize_model
+    model = BackboneRelational.findOrCreate(model_type, model_type::parse(@nativeToAttributes(seq_model)))
+    model._db_model = seq_model
     return model
 
-  @nativeToAttributes: (sequelize_model, attributes={}) ->
-    return if not sequelize_model
-    (attributes[key] = value) for own key, value of sequelize_model when key in sequelize_model.attributes
+  @nativeToAttributes: (seq_model) ->
+    # TODO: handle relationship mapping
+    attributes = {}
+    attributes[key] = seq_model[key] for key in seq_model.attributes
     return attributes
 
-  @attributesToNative: (attributes, sequelize_model) ->
-    return if not sequelize_model
-    (sequelize_model[key] = null) for own key, value of sequelize_model when key in sequelize_model.attributes
-    sequelize_model[key] = value for key, value in attributes
-    return sequelize_model
+  @attributesToNative: (attributes) ->
+    # TODO: handle relationship mapping
+    return attributes

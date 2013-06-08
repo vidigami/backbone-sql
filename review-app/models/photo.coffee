@@ -3,7 +3,6 @@ Backbone = require 'backbone'
 
 db_config = require '../config/lib'
 Sequelize = require 'sequelize'
-SequelizeSync = require '../backbone_sync'
 
 class Photo extends Backbone.Model
 
@@ -40,4 +39,4 @@ module.exports = class ServerPhoto extends Photo
 
     album: -> ['hasOne', require('./album'), indexed: true]
 
-  sync: new SequelizeSync(ServerPhoto)
+  sync: require('../backbone_sync')(ServerPhoto)
