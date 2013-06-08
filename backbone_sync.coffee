@@ -26,23 +26,22 @@ module.exports = class SequelizeBackboneSync
     @table = database_parts[2]
     @model_name = inflection.classify(inflection.singularize(@table))
 
-    schema_info = SchemaParser.parse(_.result(@model_type, 'schema') or {})
-    @schema = schema_info.schema
-    @raw_relations = schema_info.raw_relations
-    @field_options = schema_info.field_options
+    @schema_info = SchemaParser.parse(_.result(@model_type, 'schema') or {})
 
     url_parts.pathname = @database # remove the table from the connection
     @sequelize = new Sequelize(URL.format(url_parts), {dialect: 'mysql', logging: false})
-    @connection = @sequelize.define @model_name, @schema, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
-    @model_type._sequelize_schema = @connection
+    @connection = @sequelize.define @model_name, @schema_info.schema, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
+
+    # publish methods and sync on model
     @model_type[fn] = _.bind(@[fn], @) for fn in CLASS_METHODS # publish methods on the model class
+    @model_type._sync = @
 
   initialize: =>
-    @relations = RelationParser.parse(@model_type, @raw_relations)
-    for relation_name, relation_info of @relations
-      @connection[relation_info.type](relation_info.model._sequelize_schema, relation_info.options)
+    @relations = RelationParser.parse(@model_type, @schema_info.raw_relations)
+    for name, relation_info of @relations
+      @connection[relation_info.type](relation_info.model._sync.connection, relation_info.options)
 
   ###################################
   # Classic Backbone Sync
@@ -108,6 +107,4 @@ module.exports = class SequelizeBackboneSync
 #   model - the model that will be used to add query functions to
 module.exports = (model_type, options) ->
   sync = new SequelizeBackboneSync(model_type, options)
-  model_type.initialize = sync.initialize
-  model_type._sync = sync # used for inflection
   return (method, model, options={}) -> sync[method](model, options)
