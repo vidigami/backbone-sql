@@ -6,8 +6,8 @@ Queue = require 'queue-async'
 inflection = require 'inflection'
 Sequelize = require 'sequelize'
 SequelizeCursor = require './lib/sequelize_cursor'
-SchemaParser = require './lib/schema_parser'
-RelationParser = require './lib/relation_parser'
+SchemaParser = require './lib/parsers/schema'
+RelationParser = require './lib/parsers/relation'
 
 CLASS_METHODS = [
   'initialize'
@@ -81,7 +81,7 @@ module.exports = class SequelizeBackboneSync
   ###################################
   # Collection Extensions
   ###################################
-  cursor: (query={}) -> return new SequelizeCursor(@, query)
+  cursor: (query={}) -> return new SequelizeCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
 
   find: (query, callback) ->
     [query, callback] = [{}, query] if arguments.length is 1
