@@ -1,4 +1,4 @@
-BackboneRelational = require './backbone_relational'
+BackboneRelationalUtils = require 'backbone-node/lib/backbone_relational_utils'
 
 module.exports = class SequelizeBackboneAdapter
   # todo: relations
@@ -7,7 +7,7 @@ module.exports = class SequelizeBackboneAdapter
     return if not seq_model
 
     # work around for Backbone Relational
-    model = BackboneRelational.findOrCreate(model_type, model_type::parse(@nativeToAttributes(seq_model)))
+    model = BackboneRelationalUtils.findOrCreate(model_type, model_type::parse(@nativeToAttributes(seq_model)))
     model._db_model = seq_model
     return model
 
