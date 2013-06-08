@@ -1,6 +1,6 @@
 Sequelize = require 'sequelize'
-sequelize = require '../db/sequelize'
-BackboneSequelize = require '../db/backbone_sequelize'
+sequelize = require '../lib/sequelize'
+BackboneSequelize = require '../lib/backbone_sequelize'
 
 Photo = require('../models/photo').schema
 Album = require('../models/album').schema

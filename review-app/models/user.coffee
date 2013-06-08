@@ -1,5 +1,5 @@
 Backbone = require 'backbone'
-sequelize = require '../db/sequelize'
+sequelize = require '../lib/sequelize'
 
 Classroom = require './classroom'
 

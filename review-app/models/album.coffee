@@ -1,9 +1,9 @@
 _ = require 'underscore'
 Backbone = require 'backbone'
 
-db_config = require '../config/db'
+db_config = require '../config/lib'
 Sequelize = require 'sequelize'
-SequelizeSync = require '../db/sequelize_sync'
+SequelizeSync = require '../backbone_sync'
 
 
 class Album extends Backbone.Model
