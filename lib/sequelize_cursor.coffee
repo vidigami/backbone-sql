@@ -28,16 +28,18 @@ module.exports = class SequelizeCursor extends Cursor
     else if @_cursor.$white_list
       $fields = @_cursor.$white_list
     args.push({attributes: $fields}) if $fields
-    args.push({raw: true})
+    # args.push({raw: true}) # can't use raw or else booleans aren't mapped correctly, eg. false -> 0
 
     # call
     @connection.findAll.apply(@connection, args)
       .error(callback)
-      .success (json) =>
-        return callback(null, if json.length then json[0] else null) if @_cursor.$one
+      .success (seq_models) =>
+        return callback(null, if seq_models.length then @backbone_adapter.nativeToAttributes(seq_models[0]) else null) if @_cursor.$one
+        json = _.map(seq_models, (seq_model) => @backbone_adapter.nativeToAttributes(seq_model))
 
         # TODO: OPTIMIZE TO REMOVE 'id' and '_rev' if needed
         if @_cursor.$values
+          $values = if @_cursor.$white_list then _.intersection(@_cursor.$values, @_cursor.$white_list) else @_cursor.$values
           if @_cursor.$values.length is 1
             key = @_cursor.$values[0]
             json = if $values.length then ((if item.hasOwnProperty(key) then item[key] else null) for item in json) else _.map(json, -> null)

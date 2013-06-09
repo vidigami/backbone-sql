@@ -64,7 +64,7 @@ module.exports = class SequelizeBackboneSync
     @connection.create(model.attributes)
       .success (seq_model) =>
         return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless seq_model
-        options.success?(@backbone_adapter.nativeToModel(seq_model, @model_type))
+        options.success?(@backbone_adapter.nativeToAttributes(seq_model))
 
   update: (model, options) =>
     json = model.toJSON()
