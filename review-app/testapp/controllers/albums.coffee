@@ -1,6 +1,6 @@
 logger = require 'vidigami/node/logger'
 ServerAlbum = require '../../models/album'
-RestController = require './rest_controller'
+RestController = require 'backbone-rest'
 
 module.exports = class AlbumsController extends RestController
 

@@ -20,12 +20,12 @@ module.exports = class RelationParser
         model: model
         options: _.extend(
           as: name
-          foreignKey: RelationParser._keyFromTypeAndModel(type, model)
+          foreignKey: @_keyFromTypeAndModel(type, model_type, model)
           , options)
     return result
 
-  @_keyFromTypeAndModel: (type, model) ->
+  @_keyFromTypeAndModel: (type, from_model, to_model) ->
     if type is 'hasOne'
-      return inflection.foreign_key(model._sync.model_name)
+      return inflection.foreign_key(from_model._sync.model_name)
     if type is 'hasMany'
-      return inflection.foreign_key(model_type._sync.model_name)
+      return inflection.foreign_key(to_model._sync.model_name)

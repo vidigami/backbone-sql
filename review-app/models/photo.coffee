@@ -1,7 +1,6 @@
 moment = require 'moment'
 Backbone = require 'backbone'
 
-db_config = require '../config/lib'
 Sequelize = require 'sequelize'
 
 class Photo extends Backbone.Model
@@ -13,7 +12,6 @@ class Photo extends Backbone.Model
 
 
 module.exports = class ServerPhoto extends Photo
-  url: db_config.url + '/photos'
 
   @schema:
     source_file_name: 'String'
@@ -39,4 +37,5 @@ module.exports = class ServerPhoto extends Photo
 
     album: -> ['hasOne', require('./album'), indexed: true]
 
-  sync: require('../backbone_sync')(ServerPhoto)
+  url: require('../config/databases/photos')['dev']
+  sync: require('../../backbone_sync')(ServerPhoto)

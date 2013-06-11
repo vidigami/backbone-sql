@@ -1,6 +1,6 @@
 logger = require '../../node/logger'
 ServerPhoto = require '../../models/photo'
-RestController = require './rest_controller'
+RestController = require 'backbone-rest'
 
 module.exports = class PhotosController extends RestController
 
@@ -13,7 +13,7 @@ module.exports = class PhotosController extends RestController
   show: (req, res) =>
     id = req.params.id
     logger.info("Get id: #{id}")
-    @model_type.findOne id, (err, photo) ->
+    @model_type.find id, (err, photo) ->
       return res.json({ error: err }) if err
       return res.status(404).json() if not photo
 #      console.log photo

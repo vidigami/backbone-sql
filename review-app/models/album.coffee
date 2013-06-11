@@ -1,7 +1,6 @@
 _ = require 'underscore'
 Backbone = require 'backbone'
 
-db_config = require '../config/lib'
 Sequelize = require 'sequelize'
 
 
@@ -19,8 +18,6 @@ class Album extends Backbone.Model
 
 module.exports = class ServerAlbum extends Album
 
-  url: db_config.url + '/albums'
-
   @schema:
     name: ['String', indexed: true]
     description: 'String'
@@ -37,4 +34,5 @@ module.exports = class ServerAlbum extends Album
 
     photos: -> ['hasMany', require('./photo')]
 
-  sync: require('../backbone_sync')(ServerAlbum)
+  url: require('../config/databases/albums')['dev']
+  sync: require('../../backbone_sync')(ServerAlbum)
