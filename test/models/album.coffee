@@ -29,5 +29,5 @@ module.exports = class ServerAlbum extends Album
 
     photos: -> ['hasMany', require('./photo')]
 
-  url: require('../config/databases/albums')['test']
+  url: "#{require('../config/database')['test']}/albums"
   sync: require('../../backbone_sync')(ServerAlbum)

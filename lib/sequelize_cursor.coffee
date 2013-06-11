@@ -1,7 +1,11 @@
 util = require 'util'
 _ = require 'underscore'
 
-Cursor = require 'backbone-node/cursor'
+Cursor = require 'backbone-node/lib/cursor'
+
+_sortArgsToSequelize = (args) ->
+  args = if Array.isArray(args) then args else [args]
+  return ((if arg.charAt(0) is '-' then arg.substr(1) + ' DESC' else arg) for arg in args)
 
 module.exports = class SequelizeCursor extends Cursor
   ##############################################
@@ -9,7 +13,7 @@ module.exports = class SequelizeCursor extends Cursor
   ##############################################
   toJSON: (callback, count) ->
     find = {where: @backbone_adapter.attributesToNative(@_find)}
-    find.order = @_cursor.$sort if @_cursor.$sort # TODO: should be in form {order: 'title DESC'}
+    find.order = _sortArgsToSequelize(@_cursor.$sort) if @_cursor.$sort
     find.offset = @_cursor.$offset if @_cursor.$offset
     if @_cursor.$one
       find.limit = 1
@@ -50,6 +54,7 @@ module.exports = class SequelizeCursor extends Cursor
           json = _.map(json, (item) => _.pick(item, $select))
         else if @_cursor.$white_list
           json = _.map(json, (item) => _.pick(item, @_cursor.$white_list))
+
         callback(null, json)
     return # terminating
 

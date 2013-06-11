@@ -35,13 +35,7 @@ PhotosController = require './controllers/photos'
 AlbumsController = require './controllers/albums'
 
 
-cross_origin.allowOrigin(app, [
-  '/albums'
-  '/albums/:id'
-  '/albums/:id/photos'
-  '/photos'
-  '/photos/:id'
-], bind_options)
+cross_origin.allowOriginAllPaths(app, bind_options)
 
 photos_controller = new PhotosController(app)
 albums_controller = new AlbumsController(app)

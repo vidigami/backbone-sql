@@ -55,9 +55,9 @@ module.exports = class SequelizeBackboneSync
 
     # a model
     else
-      @cursor(model.get('id')).limit(1).toJSON (err, json) ->
+      @cursor(model.get('id')).toJSON (err, json) ->
         return options.error(err) if err
-        return options.error(new Error "Model not found. Id #{model.get('id')}") if json.length isnt 1
+        return options.error(new Error "Model not found. Id #{model.get('id')}") if not json
         options.success?(json)
 
   create: (model, options) ->
