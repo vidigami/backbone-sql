@@ -28,6 +28,7 @@ module.exports = class ServerAlbum extends Album
     last_changed: 'Date'
 
     photos: -> ['hasMany', require('./photo')]
+#    photo: -> ['hasOne', require('./photo'), reverse: true]
 
   url: "#{require('../config/database')['test']}/albums"
   sync: require('../../backbone_sync')(ServerAlbum)

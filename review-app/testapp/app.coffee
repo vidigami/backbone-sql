@@ -10,13 +10,13 @@ bind_options =
 
 app = express()
 app.configure ->
-  app.set "port", config.port()
+  app.set 'port', config.port()
   app.use express.favicon()
-  app.use express.logger("dev")
+  app.use express.logger('dev')
   app.use express.bodyParser()
   app.use express.methodOverride()
   app.use app.router
-  app.use express.static(path.join(__dirname, "../public"))
+  app.use express.static(path.join(__dirname, '../public'))
 
 app.configure 'development', ->
   app.use express.errorHandler()
@@ -42,4 +42,4 @@ albums_controller = new AlbumsController(app)
 
 
 # start the server!
-http.createServer(app).listen app.get("port"), -> console.log("Express server listening on port " + app.get("port"))
+http.createServer(app).listen app.get('port'), -> console.log("Express server listening on port #{app.get('port')}")

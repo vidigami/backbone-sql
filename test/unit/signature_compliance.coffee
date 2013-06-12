@@ -21,5 +21,5 @@ test_parameters =
 
 Album.initialize()
 
-require('backbone-node/lib/test_generators/server_model')(test_parameters)
-require('backbone-rest/lib/test_generators/backbone_rest')(test_parameters)
+require('backbone-node/lib/test_generators/all')(test_parameters)
+#require('backbone-rest/lib/test_generators/all')(test_parameters)

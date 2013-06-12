@@ -1,1 +1,1 @@
-web: nodemon -w server testapp/app.coffee
+web: nodemon -w testapp testapp/app.coffee

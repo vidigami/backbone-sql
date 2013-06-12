@@ -7,9 +7,9 @@ inflection = require 'inflection'
 Sequelize = require 'sequelize'
 SequelizeCursor = require './lib/sequelize_cursor'
 SchemaParser = require './lib/parsers/schema'
-RelationParser = require './lib/parsers/relation'
-relation_manager = require './lib/relation_manager'
-#relation_manager = require 'backbone-node/lib/relation_manager'
+RelationParser = require 'backbone-node/lib/parsers/relation'
+#relation_manager = require './lib/relation_manager'
+relation_manager = require 'backbone-node/lib/relation_manager'
 
 CLASS_METHODS = [
   'initialize'
@@ -42,7 +42,7 @@ module.exports = class SequelizeBackboneSync
   initialize: =>
     @relations = RelationParser.parse(@model_type, @schema_info.raw_relations)
     for name, relation_info of @relations
-      @connection[relation_info.type](relation_info.model._sync.connection, relation_info.options)
+      @connection[relation_info.type](relation_info.model._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
 
     @model_type::get = relation_manager(@model_type, @relations)
 
@@ -72,13 +72,13 @@ module.exports = class SequelizeBackboneSync
   update: (model, options) =>
     json = model.toJSON()
     @connection.update(json, model.get('id'))
-      .success -> options.success?(json)
-      # .error (err) -> options.error(err)
+      .success( -> options.success?(json))
+      .error (err) -> options.error(err)
 
   delete: (model, options) ->
     @connection.destroy(model.get('id'))
-      .success -> options.success?(model)
-      # .error (err) -> options.error(err)
+      .success( -> options.success?(model))
+      .error (err) -> options.error(err)
 
   ###################################
   # Collection Extensions
