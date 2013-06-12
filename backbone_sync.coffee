@@ -8,12 +8,13 @@ Sequelize = require 'sequelize'
 SequelizeCursor = require './lib/sequelize_cursor'
 SchemaParser = require './lib/parsers/schema'
 RelationParser = require './lib/parsers/relation'
+relation_manager = require './lib/relation_manager'
+#relation_manager = require 'backbone-node/lib/relation_manager'
 
 CLASS_METHODS = [
   'initialize'
   'cursor', 'find'
   'count', 'all', 'destroy'
-  # 'findOneNearDate'
 ]
 
 module.exports = class SequelizeBackboneSync
@@ -42,6 +43,8 @@ module.exports = class SequelizeBackboneSync
     @relations = RelationParser.parse(@model_type, @schema_info.raw_relations)
     for name, relation_info of @relations
       @connection[relation_info.type](relation_info.model._sync.connection, relation_info.options)
+
+    @model_type::get = relation_manager(@model_type, @relations)
 
   ###################################
   # Classic Backbone Sync
