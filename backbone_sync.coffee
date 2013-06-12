@@ -5,11 +5,12 @@ Queue = require 'queue-async'
 
 inflection = require 'inflection'
 Sequelize = require 'sequelize'
+
+RelationParser = require 'backbone-node/lib/parsers/relation'
+relation_manager = require 'backbone-node/lib/relation_manager'
+
 SequelizeCursor = require './lib/sequelize_cursor'
 SchemaParser = require './lib/parsers/schema'
-RelationParser = require 'backbone-node/lib/parsers/relation'
-#relation_manager = require './lib/relation_manager'
-relation_manager = require 'backbone-node/lib/relation_manager'
 
 CLASS_METHODS = [
   'initialize'
