@@ -55,13 +55,13 @@ module.exports = class SequelizeCursor extends Cursor
         else if @_cursor.$white_list
           json = _.map(json, (item) => _.pick(item, @_cursor.$white_list))
 
-        if @_cursor.hasOwnProperty('$page')
+        if @_cursor.$page
           # sequelize doesn't like limit / offset in count queries
           @connection.count({ where: find.where }).error(callback).success (count) =>
             json =
-                offset: @_cursor.$offset
-                total_rows: count
-                rows: json
+              offset: @_cursor.$offset
+              total_rows: count
+              rows: json
             callback(null, json)
         else
           callback(null, json)
