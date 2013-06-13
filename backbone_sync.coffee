@@ -6,11 +6,10 @@ Queue = require 'queue-async'
 inflection = require 'inflection'
 Sequelize = require 'sequelize'
 
-RelationParser = require 'backbone-node/lib/parsers/relation'
 relation_manager = require 'backbone-node/lib/relation_manager'
-
+RelationParser = require 'backbone-node/lib/parsers/relation'
+SchemaParser = require './lib/parsers/sequelize_schema'
 SequelizeCursor = require './lib/sequelize_cursor'
-SchemaParser = require './lib/parsers/schema'
 
 CLASS_METHODS = [
   'initialize'
@@ -21,7 +20,7 @@ CLASS_METHODS = [
 module.exports = class SequelizeBackboneSync
 
   constructor: (@model_type, options={}) ->
-    throw new Error("Missing url for model") unless @url = _.result((new @model_type()), 'url')
+    throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
     url_parts = URL.parse(@url)
     database_parts = url_parts.pathname.split('/')
     @database = database_parts[1]
