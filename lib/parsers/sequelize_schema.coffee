@@ -1,6 +1,6 @@
 _ = require 'underscore'
 Sequelize = require 'sequelize'
-SchemaParser = require 'backbone-node/lib/parsers/schema'
+SchemaParser = require 'backbone-node/lib/schema'
 
 module.exports = class SequelizeSchemaParser extends SchemaParser
 

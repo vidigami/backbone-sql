@@ -6,9 +6,8 @@ Queue = require 'queue-async'
 inflection = require 'inflection'
 Sequelize = require 'sequelize'
 
-relation_manager = require 'backbone-node/lib/relation_manager'
-RelationParser = require 'backbone-node/lib/parsers/relation'
-SchemaParser = require './lib/parsers/sequelize_schema'
+#Schema = require 'backbone-node/lib/schema'
+Schema = require './lib/parsers/sequelize_schema'
 SequelizeCursor = require './lib/sequelize_cursor'
 
 CLASS_METHODS = [
@@ -21,30 +20,28 @@ module.exports = class SequelizeBackboneSync
 
   constructor: (@model_type, options={}) ->
     throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
-    url_parts = URL.parse(@url)
-    database_parts = url_parts.pathname.split('/')
+    @url_parts = URL.parse(@url)
+    database_parts = @url_parts.pathname.split('/')
     @database = database_parts[1]
     @table = database_parts[2]
     @model_name = inflection.classify(inflection.singularize(@table))
-
-    @schema_info = SchemaParser.parse(_.result(@model_type, 'schema') or {})
-
-    url_parts.pathname = @database # remove the table from the connection
-    @sequelize = new Sequelize(URL.format(url_parts), {dialect: 'mysql', logging: false})
-    @connection = @sequelize.define @model_name, @schema_info.schema, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
-
-    @backbone_adapter = require './lib/sequelize_backbone_adapter'
+    @url_parts.pathname = @database # remove the table from the connection
 
     # publish methods and sync on model
     @model_type[fn] = _.bind(@[fn], @) for fn in CLASS_METHODS # publish methods on the model class
     @model_type._sync = @
+    @model_type._schema = new Schema(@model_type)
+
+    @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
+    @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
+
+    @backbone_adapter = require './lib/sequelize_backbone_adapter'
 
   initialize: =>
-    @relations = RelationParser.parse(@model_type, @schema_info.raw_relations)
+    @model_type._schema.initialize()
+    @relations = @model_type._schema.relations
     for name, relation_info of @relations
-      @connection[relation_info.type](relation_info.model._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
-
-    @model_type::get = relation_manager(@model_type, @relations)
+      @connection[relation_info.type_name](relation_info.related_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
 
   ###################################
   # Classic Backbone Sync

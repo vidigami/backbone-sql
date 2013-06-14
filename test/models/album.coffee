@@ -27,7 +27,7 @@ module.exports = class ServerAlbum extends Album
     editable: 'Boolean'
     last_changed: 'Date'
 
-    photos: -> ['hasMany', require('./photo')]
+#    photos: -> ['hasMany', require('./photo')]
 #    photo: -> ['hasOne', require('./photo'), reverse: true]
 
   url: "#{require('../config/database')['test']}/albums"
