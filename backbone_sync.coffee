@@ -88,7 +88,7 @@ module.exports = (model_type, cache) ->
 
   sync_fn = (method, model, options={}) ->
     sync['initialize']()
-    sync[method](model, options)
+    sync[method].apply(sync, Array::slice.call(arguments, 1))
 
   require('backbone-orm/lib/model_extensions')(model_type, sync_fn)
 
