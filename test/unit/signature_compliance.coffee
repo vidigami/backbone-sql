@@ -9,9 +9,6 @@ Photo = require '../models/photo'
 
 BASE_COUNT = 10
 
-Album.initialize()
-Photo.initialize()
-
 test_parameters =
   model_type: Album
   route: 'albums'
