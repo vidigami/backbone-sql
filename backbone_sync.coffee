@@ -73,22 +73,9 @@ module.exports = class SequelizeBackboneSync
       .error (err) -> options.error(err)
 
   ###################################
-  # Collection Extensions
+  # Backbone ORM - Class Extensions
   ###################################
   cursor: (query={}) -> return new SequelizeCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
-
-  find: (query, callback) ->
-    [query, callback] = [{}, query] if arguments.length is 1
-    @cursor(query).toModels(callback)
-
-  ###################################
-  # Convenience Functions
-  ###################################
-  all: (callback) -> @cursor({}).toModels callback
-
-  count: (query, callback) ->
-    [query, callback] = [{}, query] if arguments.length is 1
-    @cursor(query).count(callback)
 
   destroy: (query, callback) ->
     [query, callback] = [{}, query] if arguments.length is 1
