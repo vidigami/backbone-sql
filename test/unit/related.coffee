@@ -77,10 +77,9 @@ test_parameters =
       owners = MODELS.owners.slice(0)
       for flat in MODELS.flats
         do (flat) ->
-          console.log flat
           owner = owners.pop()
           flat.set({owner: owner})
-          save_queue.defer (callback) -> flat.save {}, adapters.bbCallback -> console.log flat; callback()
+          save_queue.defer (callback) -> flat.save {}, adapters.bbCallback callback
 
       owners = MODELS.owners.slice(0)
       for reverse in MODELS.reverses

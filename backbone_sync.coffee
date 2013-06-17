@@ -64,7 +64,6 @@ module.exports = class SequelizeBackboneSync
 
   update: (model, options) =>
     json = model.toJSON()
-    console.log json.owner_id
     @connection.update(json, model.get('id'))
       .success( -> options.success?(json))
       .error (err) -> options.error(err)
@@ -84,6 +83,8 @@ module.exports = class SequelizeBackboneSync
     @connection.destroy(query)
       .success(callback)
       .error(callback)
+
+  relation: (key) -> @model_type._schema.relation(key)
 
 module.exports = (model_type, cache) ->
   sync = new SequelizeBackboneSync(model_type)
