@@ -1,7 +1,7 @@
 util = require 'util'
 _ = require 'underscore'
 
-BackboneRelationalUtils = require 'backbone-node/lib/backbone_relational_utils'
+BackboneRelationalUtils = require 'backbone-orm/lib/backbone_relational_utils'
 
 module.exports = class SequelizeBackboneAdapter
   # todo: relations

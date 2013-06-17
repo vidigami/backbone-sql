@@ -6,7 +6,7 @@ Queue = require 'queue-async'
 inflection = require 'inflection'
 Sequelize = require 'sequelize'
 
-#Schema = require 'backbone-node/lib/schema'
+#Schema = require 'backbone-orm/lib/schema'
 Schema = require './lib/parsers/sequelize_schema'
 SequelizeCursor = require './lib/sequelize_cursor'
 
