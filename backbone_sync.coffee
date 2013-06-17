@@ -6,8 +6,8 @@ Queue = require 'queue-async'
 inflection = require 'inflection'
 Sequelize = require 'sequelize'
 
-#Schema = require 'backbone-orm/lib/schema'
-Schema = require './lib/parsers/sequelize_schema'
+Schema = require 'backbone-orm/lib/schema'
+sequelize_types = require './lib/sequelize_types'
 SequelizeCursor = require './lib/sequelize_cursor'
 Utils = require 'backbone-orm/utils'
 
@@ -24,7 +24,7 @@ module.exports = class SequelizeBackboneSync
     # publish methods and sync on model
     @model_type.model_name = Utils.urlToModelName(url)
     @model_type._sync = @
-    @model_type._schema = new Schema(@model_type)
+    @model_type._schema = new Schema(@model_type, sequelize_types)
 
     @sequelize = new Sequelize(URL.format(url_parts), {dialect: 'mysql', logging: false})
     @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
@@ -32,12 +32,13 @@ module.exports = class SequelizeBackboneSync
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
 
   initialize: ->
-    return if @is_initialized; @is_initialized = true
+    return if @is_initialized
+    @is_initialized = true
     @model_type._schema.initialize()
 
     @relations = @model_type._schema.relations
     for name, relation_info of @relations
-      @connection[relation_info.type_name](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
+      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
 
   ###################################
   # Classic Backbone Sync
