@@ -9,23 +9,24 @@ Sequelize = require 'sequelize'
 #Schema = require 'backbone-orm/lib/schema'
 Schema = require './lib/parsers/sequelize_schema'
 SequelizeCursor = require './lib/sequelize_cursor'
+Utils = require 'backbone-orm/utils'
 
 module.exports = class SequelizeBackboneSync
 
   constructor: (@model_type, options={}) ->
-    throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
-    @url_parts = URL.parse(@url)
+    throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
+    url_parts = URL.parse(url)
     database_parts = @url_parts.pathname.split('/')
     @database = database_parts[1]
     @table = database_parts[2]
-    @model_type.model_name = inflection.classify(inflection.singularize(@table))
-    @url_parts.pathname = @database # remove the table from the connection
+    url_parts.pathname = @database # remove the table from the connection
 
     # publish methods and sync on model
+    @model_type.model_name = Utils.urlToModelName(url)
     @model_type._sync = @
     @model_type._schema = new Schema(@model_type)
 
-    @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
+    @sequelize = new Sequelize(URL.format(url_parts), {dialect: 'mysql', logging: false})
     @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
