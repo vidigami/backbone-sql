@@ -6,15 +6,9 @@ Queue = require 'queue-async'
 inflection = require 'inflection'
 Sequelize = require 'sequelize'
 
-#Schema = require 'backbone-node/lib/schema'
-Schema = require './lib/parsers/sequelize_schema'
+Schema = require 'backbone-orm/lib/schema'
+sequelize_types = require './lib/sequelize_types'
 SequelizeCursor = require './lib/sequelize_cursor'
-
-CLASS_METHODS = [
-  'initialize'
-  'cursor', 'find'
-  'count', 'all', 'destroy'
-]
 
 module.exports = class SequelizeBackboneSync
 
@@ -24,24 +18,26 @@ module.exports = class SequelizeBackboneSync
     database_parts = @url_parts.pathname.split('/')
     @database = database_parts[1]
     @table = database_parts[2]
-    @model_name = inflection.classify(inflection.singularize(@table))
+    @model_type.model_name = inflection.classify(inflection.singularize(@table))
     @url_parts.pathname = @database # remove the table from the connection
 
     # publish methods and sync on model
-    @model_type[fn] = _.bind(@[fn], @) for fn in CLASS_METHODS # publish methods on the model class
     @model_type._sync = @
-    @model_type._schema = new Schema(@model_type)
+    @model_type._schema = new Schema(@model_type, sequelize_types)
 
     @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
     @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
 
-  initialize: =>
+  initialize: ->
+    return if @is_initialized
+    @is_initialized = true
     @model_type._schema.initialize()
+
     @relations = @model_type._schema.relations
     for name, relation_info of @relations
-      @connection[relation_info.type_name](relation_info.related_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
+      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
 
   ###################################
   # Classic Backbone Sync
@@ -68,6 +64,7 @@ module.exports = class SequelizeBackboneSync
 
   update: (model, options) =>
     json = model.toJSON()
+    console.log json.owner_id
     @connection.update(json, model.get('id'))
       .success( -> options.success?(json))
       .error (err) -> options.error(err)
@@ -78,22 +75,9 @@ module.exports = class SequelizeBackboneSync
       .error (err) -> options.error(err)
 
   ###################################
-  # Collection Extensions
+  # Backbone ORM - Class Extensions
   ###################################
   cursor: (query={}) -> return new SequelizeCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
-
-  find: (query, callback) ->
-    [query, callback] = [{}, query] if arguments.length is 1
-    @cursor(query).toModels(callback)
-
-  ###################################
-  # Convenience Functions
-  ###################################
-  all: (callback) -> @cursor({}).toModels callback
-
-  count: (query, callback) ->
-    [query, callback] = [{}, query] if arguments.length is 1
-    @cursor(query).count(callback)
 
   destroy: (query, callback) ->
     [query, callback] = [{}, query] if arguments.length is 1
@@ -101,10 +85,12 @@ module.exports = class SequelizeBackboneSync
       .success(callback)
       .error(callback)
 
-# options
-#   database_config - the database config
-#   collection - the collection to use for models
-#   model - the model that will be used to add query functions to
-module.exports = (model_type, options) ->
-  sync = new SequelizeBackboneSync(model_type, options)
-  return (method, model, options={}) -> sync[method](model, options)
+module.exports = (model_type, cache) ->
+  sync = new SequelizeBackboneSync(model_type)
+
+  sync_fn = (method, model, options={}) ->
+    sync['initialize']()
+    sync[method].apply(sync, Array::slice.call(arguments, 1))
+
+  require('backbone-orm/lib/model_extensions')(model_type, sync_fn) # mixin extensions
+  return if cache then require('backbone-orm/cache_sync')(model_type, sync_fn) else sync_fn
