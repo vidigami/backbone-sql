@@ -64,7 +64,6 @@ test_parameters =
       save_queue.await callback
 
     queue.await (err) ->
-      console.log '?'
       callback(null, []) #_.map(MODELS.photos, (test) -> JSONUtils.valueToJSON(test.toJSON())))
 
 
