@@ -89,6 +89,7 @@ module.exports = class SequelizeBackboneSync
       .success(callback)
       .error(callback)
 
+  schema: (key) -> @model_type._schema
   relation: (key) -> @model_type._schema.relation(key)
 
 module.exports = (model_type, cache) ->
