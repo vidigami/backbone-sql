@@ -97,7 +97,6 @@ module.exports = (model_type, cache) ->
   sync = new SequelizeBackboneSync(model_type)
 
   sync_fn = (method, model, options={}) ->
-    console.trace method, sync[method] unless sync[method]
     sync['initialize']()
     sync[method].apply(sync, Array::slice.call(arguments, 1))
 
