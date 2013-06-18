@@ -11,7 +11,6 @@ adapters = Utils.adapters
 BASE_COUNT = 1
 
 class Flat extends Backbone.Model
-  url: '/flats'
   @schema:
     name: 'String'
     owner: -> ['belongsTo', Owner]
@@ -19,7 +18,6 @@ class Flat extends Backbone.Model
   sync: require('../../backbone_sync')(Flat)
 
 class Reverse extends Backbone.Model
-  url: '/reverses'
   @schema:
     name: 'String'
     owner: -> ['belongsTo', Owner]
@@ -27,11 +25,10 @@ class Reverse extends Backbone.Model
   sync: require('../../backbone_sync')(Reverse)
 
 class Owner extends Backbone.Model
-  url: '/owners'
   @schema:
     name: 'String'
-    flats: -> ['hasMany', Flat]
-    reverses: -> ['hasMany', Reverse]
+    flat: -> ['hasOne', Flat]
+    reverse: -> ['hasOne', Reverse]
   url: "#{require('../config/database')['test']}/owners"
   sync: require('../../backbone_sync')(Owner)
 
@@ -58,15 +55,15 @@ test_parameters =
 
       create_queue.defer (callback) -> Fabricator.create(Flat, BASE_COUNT, {
         name: Fabricator.uniqueId('flat_')
-      }, (err, models) -> MODELS.flats = models; callback(err))
+      }, (err, models) -> MODELS.flat = models; callback(err))
 
       create_queue.defer (callback) -> Fabricator.create(Owner, BASE_COUNT, {
         name: Fabricator.uniqueId('owner_')
-      }, (err, models) -> MODELS.owners = models; callback(err))
+      }, (err, models) -> MODELS.owner = models; callback(err))
 
       create_queue.defer (callback) -> Fabricator.create(Reverse, BASE_COUNT, {
         name: Fabricator.uniqueId('reverse_')
-      }, (err, models) -> MODELS.reverses = models; callback(err))
+      }, (err, models) -> MODELS.reverse = models; callback(err))
 
       create_queue.await callback
 
@@ -74,30 +71,24 @@ test_parameters =
     queue.defer (callback) ->
       save_queue = new Queue()
 
-      owners = MODELS.owners.slice(0)
-      for flat in MODELS.flats
+      for owner, index in MODELS.owner
+        do (owner) ->
+          owner.set({flat: MODELS.flat[index], reverse: MODELS.reverse[index]})
+          save_queue.defer (callback) -> owner.save {}, adapters.bbCallback callback
+
+      for flat in MODELS.flat
         do (flat) ->
-          owner = owners.pop()
-          flat.set({owner: owner})
           save_queue.defer (callback) -> flat.save {}, adapters.bbCallback callback
 
-      owners = MODELS.owners.slice(0)
-      for reverse in MODELS.reverses
+      for reverse in MODELS.reverse
         do (reverse) ->
-          owner = owners.pop()
-          reverse.set({owner: owner})
           save_queue.defer (callback) -> reverse.save {}, adapters.bbCallback callback
-
-      for owner in MODELS.owners
-        do (owner) ->
-          save_queue.defer (callback) -> owner.save {}, adapters.bbCallback callback
 
       save_queue.await callback
 
     queue.await (err) ->
-      callback(null, _.map(MODELS.reverses, (test) -> JSONUtils.valueToJSON(test.toJSON())))
+      callback(null, MODELS.owner)
 
 
-#require('backbone-orm/lib/test_generators/relational/has_one')(test_parameters)
-require('backbone-orm/lib/test_generators/relational/has_many')(test_parameters)
+require('backbone-orm/lib/test_generators/relational/has_one')(test_parameters)
 
