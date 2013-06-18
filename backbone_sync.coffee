@@ -59,7 +59,7 @@ module.exports = class SequelizeBackboneSync
 
   create: (model, options) ->
     json = model.toJSON()
-    # Clear relations for the query
+    # todo: translate relations to foreign keys
     delete json[name] for name, relation_info of @relations when json[name]
     @connection.create(json)
       .success (seq_model) =>
@@ -68,7 +68,7 @@ module.exports = class SequelizeBackboneSync
 
   update: (model, options) =>
     json = model.toJSON()
-    # Clear relations for the query
+    # todo: translate relations to foreign keys
     delete json[name] for name, relation_info of @relations when json[name]
     @connection.update(json, model.get('id'))
       .success( -> options.success?(json))
