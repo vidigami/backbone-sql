@@ -62,13 +62,18 @@ module.exports = class SequelizeBackboneSync
         options.success?(json)
 
   create: (model, options) ->
-    @connection.create(model.attributes)
+    json = model.toJSON()
+    # Clear relations for the query
+    delete json[name] for name, relation_info of @relations when json[name]
+    @connection.create(json)
       .success (seq_model) =>
         return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless seq_model
         options.success?(@backbone_adapter.nativeToAttributes(seq_model))
 
   update: (model, options) =>
     json = model.toJSON()
+    # Clear relations for the query
+    delete json[name] for name, relation_info of @relations when json[name]
     @connection.update(json, model.get('id'))
       .success( -> options.success?(json))
       .error (err) -> options.error(err)

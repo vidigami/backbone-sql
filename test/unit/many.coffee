@@ -95,6 +95,4 @@ test_parameters =
       callback(null, _.map(MODELS.reverses, (test) -> JSONUtils.valueToJSON(test.toJSON())))
 
 
-#require('backbone-orm/lib/test_generators/relational/has_one')(test_parameters)
 require('backbone-orm/lib/test_generators/relational/has_many')(test_parameters)
-
