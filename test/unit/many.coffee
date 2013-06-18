@@ -99,5 +99,3 @@ test_parameters =
 
 
 require('backbone-orm/lib/test_generators/relational/has_many')(test_parameters)
-
-
