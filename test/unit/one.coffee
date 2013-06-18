@@ -13,7 +13,6 @@ BASE_COUNT = 1
 class Flat extends Backbone.Model
   @schema:
     name: 'String'
-    owner: -> ['belongsTo', Owner]
   url: "#{require('../config/database')['test']}/flats"
   sync: require('../../backbone_sync')(Flat)
 
@@ -27,7 +26,7 @@ class Reverse extends Backbone.Model
 class Owner extends Backbone.Model
   @schema:
     name: 'String'
-    flat: -> ['hasOne', Flat]
+    flat: -> ['belongsTo', Flat]
     reverse: -> ['hasOne', Reverse]
   url: "#{require('../config/database')['test']}/owners"
   sync: require('../../backbone_sync')(Owner)
@@ -75,10 +74,6 @@ test_parameters =
         do (owner) ->
           owner.set({flat: MODELS.flat[index], reverse: MODELS.reverse[index]})
           save_queue.defer (callback) -> owner.save {}, adapters.bbCallback callback
-
-      for flat in MODELS.flat
-        do (flat) ->
-          save_queue.defer (callback) -> flat.save {}, adapters.bbCallback callback
 
       for reverse in MODELS.reverse
         do (reverse) ->
