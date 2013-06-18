@@ -4,11 +4,12 @@ _ = require 'underscore'
 Queue = require 'queue-async'
 
 inflection = require 'inflection'
-Sequelize = require 'sequelize'
+sql = require('sql')
 
 Schema = require 'backbone-orm/lib/schema'
-sequelize_types = require './lib/sequelize_types'
-SequelizeCursor = require './lib/sequelize_cursor'
+Cursor = require './lib/sql_cursor'
+Connection = require './lib/connection'
+
 
 module.exports = class SequelizeBackboneSync
 
@@ -23,10 +24,14 @@ module.exports = class SequelizeBackboneSync
 
     # publish methods and sync on model
     @model_type._sync = @
-    @model_type._schema = new Schema(@model_type, sequelize_types)
+    @model_type._schema = new Schema(@model_type)
 
-    @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
-    @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
+    @model_type._sql = sql.define({ name: @model_type.model_name, columns: _.keys(@model_type._schema.fields)})
+
+    console.log @model_type._sql.select().toQuery().text
+    @connection = new Connection(@url_parts.href).connection
+#    @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
+#    @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
 
@@ -36,8 +41,8 @@ module.exports = class SequelizeBackboneSync
     @model_type._schema.initialize()
 
     @relations = @model_type._schema.relations
-    for name, relation_info of @relations
-      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
+#    for name, relation_info of @relations
+#      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
 
   ###################################
   # Classic Backbone Sync

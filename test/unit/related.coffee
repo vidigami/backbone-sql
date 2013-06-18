@@ -11,7 +11,6 @@ adapters = Utils.adapters
 BASE_COUNT = 1
 
 class Flat extends Backbone.Model
-  url: '/flats'
   @schema:
     name: 'String'
     owner: -> ['belongsTo', Owner]
@@ -19,7 +18,6 @@ class Flat extends Backbone.Model
   sync: require('../../backbone_sync')(Flat)
 
 class Reverse extends Backbone.Model
-  url: '/reverses'
   @schema:
     name: 'String'
     owner: -> ['belongsTo', Owner]
@@ -27,7 +25,6 @@ class Reverse extends Backbone.Model
   sync: require('../../backbone_sync')(Reverse)
 
 class Owner extends Backbone.Model
-  url: '/owners'
   @schema:
     name: 'String'
     flats: -> ['hasMany', Flat]
