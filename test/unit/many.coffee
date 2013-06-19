@@ -25,7 +25,7 @@ class Owner extends Backbone.Model
   url: "#{require('../config/database')['test']}/owners"
   sync: require('../../backbone_sync')(Owner)
 
-BASE_COUNT = 3
+BASE_COUNT = 1
 
 test_parameters =
   model_type: Owner
@@ -87,6 +87,5 @@ test_parameters =
 
     queue.await (err) ->
       callback(err, MODELS.owner)
-
 
 require('backbone-orm/lib/test_generators/relational/has_many')(test_parameters)
