@@ -8,35 +8,31 @@ Fabricator = require 'backbone-orm/fabricator'
 Utils = require 'backbone-orm/utils'
 adapters = Utils.adapters
 
-BASE_COUNT = 1
-
 class Flat extends Backbone.Model
-  @schema:
-    name: 'String'
-    owner: -> ['belongsTo', Owner]
   url: "#{require('../config/database')['test']}/flats"
   sync: require('../../backbone_sync')(Flat)
 
 class Reverse extends Backbone.Model
   @schema:
-    name: 'String'
-    owner: -> ['belongsTo', Owner]
+    owner: -> ['belongsTo', Owner, foreign_key: 'owner_id']
   url: "#{require('../config/database')['test']}/reverses"
   sync: require('../../backbone_sync')(Reverse)
 
 class Owner extends Backbone.Model
   @schema:
-    name: 'String'
-    flats: -> ['hasMany', Flat]
-    reverses: -> ['hasMany', Reverse]
+    flats: -> ['hasMany', Flat, foreign_key: 'owner_id']
+    reverses: -> ['hasMany', Reverse, foreign_key: 'owner_id']
   url: "#{require('../config/database')['test']}/owners"
   sync: require('../../backbone_sync')(Owner)
 
+BASE_COUNT = 1
+
 test_parameters =
   model_type: Owner
-  route: 'owners'
+  route: 'mocks'
   beforeEach: (callback) ->
     MODELS = {}
+
     queue = new Queue(1)
 
     # destroy all
@@ -44,8 +40,8 @@ test_parameters =
       destroy_queue = new Queue()
 
       destroy_queue.defer (callback) -> Flat.destroy callback
-      destroy_queue.defer (callback) -> Owner.destroy callback
       destroy_queue.defer (callback) -> Reverse.destroy callback
+      destroy_queue.defer (callback) -> Owner.destroy callback
 
       destroy_queue.await callback
 
@@ -53,17 +49,15 @@ test_parameters =
     queue.defer (callback) ->
       create_queue = new Queue()
 
-      create_queue.defer (callback) -> Fabricator.create(Flat, BASE_COUNT, {
+      create_queue.defer (callback) -> Fabricator.create(Flat, 2*BASE_COUNT, {
         name: Fabricator.uniqueId('flat_')
-      }, (err, models) -> MODELS.flats = models; callback(err))
-
+      }, (err, models) -> MODELS.flat = models; callback(err))
+      create_queue.defer (callback) -> Fabricator.create(Reverse, 2*BASE_COUNT, {
+        name: Fabricator.uniqueId('reverse_')
+      }, (err, models) -> MODELS.reverse = models; callback(err))
       create_queue.defer (callback) -> Fabricator.create(Owner, BASE_COUNT, {
         name: Fabricator.uniqueId('owner_')
-      }, (err, models) -> MODELS.owners = models; callback(err))
-
-      create_queue.defer (callback) -> Fabricator.create(Reverse, BASE_COUNT, {
-        name: Fabricator.uniqueId('reverse_')
-      }, (err, models) -> MODELS.reverses = models; callback(err))
+      }, (err, models) -> MODELS.owner = models; callback(err))
 
       create_queue.await callback
 
@@ -71,28 +65,27 @@ test_parameters =
     queue.defer (callback) ->
       save_queue = new Queue()
 
-      owners = MODELS.owners.slice(0)
-      for flat in MODELS.flats
+      flats = MODELS.flat.slice()
+      reverses = MODELS.reverse.slice()
+      for owner in MODELS.owner
+        do (owner) ->
+          owner.set({
+            flats: [flats.pop(), flats.pop()]
+            reverses: [reverse1 = reverses.pop(), reverse2 = reverses.pop()]
+          })
+          save_queue.defer (callback) -> owner.save {}, adapters.bbCallback callback
+
+      for flat in MODELS.flat
         do (flat) ->
-          owner = owners.pop()
-          flat.set({owner: owner})
           save_queue.defer (callback) -> flat.save {}, adapters.bbCallback callback
 
-      owners = MODELS.owners.slice(0)
-      for reverse in MODELS.reverses
+      for reverse in MODELS.reverse
         do (reverse) ->
-          owner = owners.pop()
-          reverse.set({owner: owner})
           save_queue.defer (callback) -> reverse.save {}, adapters.bbCallback callback
-
-      for owner in MODELS.owners
-        do (owner) ->
-          save_queue.defer (callback) -> owner.save {}, adapters.bbCallback callback
 
       save_queue.await callback
 
     queue.await (err) ->
-      callback(null, _.map(MODELS.reverses, (test) -> JSONUtils.valueToJSON(test.toJSON())))
-
+      callback(err, MODELS.owner)
 
 require('backbone-orm/lib/test_generators/relational/has_many')(test_parameters)

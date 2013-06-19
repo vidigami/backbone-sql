@@ -75,6 +75,7 @@ test_parameters =
           owner.set({flat: MODELS.flat[index], reverse: MODELS.reverse[index]})
           save_queue.defer (callback) -> owner.save {}, adapters.bbCallback callback
 
+      # TODO: remove -> is this neccessary?
       for reverse in MODELS.reverse
         do (reverse) ->
           save_queue.defer (callback) -> reverse.save {}, adapters.bbCallback callback
@@ -82,7 +83,8 @@ test_parameters =
       save_queue.await callback
 
     queue.await (err) ->
-      callback(null, MODELS.owner)
+      callback(err, _.map(MODELS.owner, (test) -> test.toJSON()))
+      # callback(null, MODELS.owner)
 
 
 require('backbone-orm/lib/test_generators/relational/has_one')(test_parameters)

@@ -7,9 +7,20 @@ inflection = require 'inflection'
 sql = require('sql')
 
 Schema = require 'backbone-orm/lib/schema'
-Cursor = require './lib/sql_cursor'
 Connection = require './lib/connection'
+Sequelize = require 'sequelize'
+SequelizeCursor = require './lib/sequelize_cursor'
 
+SEQUELIZE_TYPES =
+  String: Sequelize.STRING
+  Date: Sequelize.DATE
+  Boolean: Sequelize.BOOLEAN
+  Integer: Sequelize.INTEGER
+  Float: Sequelize.FLOAT
+
+SEQUELIZE_RELATIONS =
+  One: require './lib/relations/one'
+  Many: require './lib/relations/many'
 
 module.exports = class SequelizeBackboneSync
 
@@ -24,14 +35,25 @@ module.exports = class SequelizeBackboneSync
 
     # publish methods and sync on model
     @model_type._sync = @
-    @model_type._schema = new Schema(@model_type)
+    @model_type._schema = new Schema(@model_type, SEQUELIZE_TYPES, SEQUELIZE_RELATIONS)
 
-    @model_type._sql = sql.define({ name: @model_type.model_name, columns: _.keys(@model_type._schema.fields)})
+    @model_type::initialize = (json) ->
+#      console.log '------------------'
+#      console.log json
+      @attributes or= {}
+      for relation, relation_info of @constructor._sync.relations
+#        console.log relation_info.ids_accessor
+        rel = { _orm_needs_load: true }
+        rel['id'] = json[relation_info.ids_accessor] if json[relation_info.ids_accessor]
+        @attributes[relation] = rel
+#      console.log @attributes
+#      console.log '------------------'
+      return json
 
-    console.log @model_type._sql.select().toQuery().text
-    @connection = new Connection(@url_parts.href).connection
-#    @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
-#    @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
+    # console.log @model_type._sql.select().toQuery().text
+    # @connection = new Connection(@url_parts.href).connection
+    @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
+    @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
 
@@ -61,19 +83,17 @@ module.exports = class SequelizeBackboneSync
         return options.error(new Error "Model not found. Id #{model.get('id')}") if not json
         options.success?(json)
 
-  create: (model, options) ->
+  create: (model, options) =>
+    @_relationsToForeignKeys(model)
     json = model.toJSON()
-    # Clear relations for the query
-    delete json[name] for name, relation_info of @relations when json[name]
     @connection.create(json)
       .success (seq_model) =>
         return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless seq_model
         options.success?(@backbone_adapter.nativeToAttributes(seq_model))
 
   update: (model, options) =>
+    @_relationsToForeignKeys(model)
     json = model.toJSON()
-    # Clear relations for the query
-    delete json[name] for name, relation_info of @relations when json[name]
     @connection.update(json, model.get('id'))
       .success( -> options.success?(json))
       .error (err) -> options.error(err)
@@ -96,6 +116,14 @@ module.exports = class SequelizeBackboneSync
 
   schema: (key) -> @model_type._schema
   relation: (key) -> @model_type._schema.relation(key)
+
+  #todo: move to a better place
+  _relationsToForeignKeys: (model) =>
+    for field, relation_info of @relations
+      related = model.attributes[field]
+      delete model.attributes[relation_info.ids_accessor]
+      model.attributes[relation_info.foreign_key] = related.id if related and relation_info.type is 'belongsTo'
+      delete model.attributes[field]
 
 module.exports = (model_type, cache) ->
   sync = new SequelizeBackboneSync(model_type)
