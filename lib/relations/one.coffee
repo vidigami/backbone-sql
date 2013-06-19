@@ -20,15 +20,11 @@ module.exports = class SqlOne extends One
         # needs load
         if value._orm_needs_load
           query = {$one: true}
-
-          console.log "value: #{util.inspect(model.attributes)}"
-
-          query.id = (value.get?('id') or value.id) if @type is 'belongsTo'
+          query['id'] = (value.get?('id') or value.id) if @type is 'belongsTo'
           query[@foreign_key] = model.attributes.id if @type is 'hasOne'
-
           @reverse_model_type.cursor(query).limit(1).toModels (err, related_model) =>
             return callback(err) if err
-            return callback(new Error "Model not found. Id #{util.inspect(query)}") if not related_model
+            return callback(new Error "Model not found. Id #{id}") if not related_model
 
             # update
             delete value._orm_needs_load

@@ -4,20 +4,13 @@ _ = require 'underscore'
 Queue = require 'queue-async'
 
 inflection = require 'inflection'
-sql = require('sql')
+Sequelize = require 'sequelize'
 
 Schema = require 'backbone-orm/lib/schema'
-Connection = require './lib/connection'
-Sequelize = require 'sequelize'
 SequelizeCursor = require './lib/sequelize_cursor'
+Utils = require 'backbone-orm/utils'
 
-SEQUELIZE_TYPES =
-  String: Sequelize.STRING
-  Date: Sequelize.DATE
-  Boolean: Sequelize.BOOLEAN
-  Integer: Sequelize.INTEGER
-  Float: Sequelize.FLOAT
-
+SEQUELIZE_TYPES = require './lib/sequelize_types'
 SEQUELIZE_RELATIONS =
   One: require './lib/relations/one'
   Many: require './lib/relations/many'
@@ -25,15 +18,15 @@ SEQUELIZE_RELATIONS =
 module.exports = class SequelizeBackboneSync
 
   constructor: (@model_type, options={}) ->
-    throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
-    @url_parts = URL.parse(@url)
+    throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
+    @url_parts = URL.parse(url)
     database_parts = @url_parts.pathname.split('/')
     @database = database_parts[1]
     @table = database_parts[2]
-    @model_type.model_name = inflection.classify(inflection.singularize(@table))
     @url_parts.pathname = @database # remove the table from the connection
 
     # publish methods and sync on model
+    @model_type.model_name = Utils.urlToModelName(url)
     @model_type._sync = @
     @model_type._schema = new Schema(@model_type, SEQUELIZE_TYPES, SEQUELIZE_RELATIONS)
 
@@ -44,14 +37,12 @@ module.exports = class SequelizeBackboneSync
       for relation, relation_info of @constructor._sync.relations
 #        console.log relation_info.ids_accessor
         rel = { _orm_needs_load: true }
-        rel['id'] = json[relation_info.ids_accessor] if json[relation_info.ids_accessor]
+        rel.id = json[relation_info.ids_accessor] if json[relation_info.ids_accessor]
         @attributes[relation] = rel
 #      console.log @attributes
 #      console.log '------------------'
       return json
 
-    # console.log @model_type._sql.select().toQuery().text
-    # @connection = new Connection(@url_parts.href).connection
     @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
     @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
@@ -63,8 +54,8 @@ module.exports = class SequelizeBackboneSync
     @model_type._schema.initialize()
 
     @relations = @model_type._schema.relations
-#    for name, relation_info of @relations
-#      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
+    for name, relation_info of @relations
+      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
 
   sync: -> return @
 
