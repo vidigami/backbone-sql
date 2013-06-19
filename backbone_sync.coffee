@@ -66,6 +66,8 @@ module.exports = class SequelizeBackboneSync
 #    for name, relation_info of @relations
 #      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
 
+  sync: -> return @
+
   ###################################
   # Classic Backbone Sync
   ###################################
@@ -130,6 +132,7 @@ module.exports = (model_type, cache) ->
 
   sync_fn = (method, model, options={}) ->
     sync['initialize']()
+    return module.exports.apply(null, Array::slice.call(arguments, 1)) if method is 'createSync' # create a new sync
     sync[method].apply(sync, Array::slice.call(arguments, 1))
 
   require('backbone-orm/lib/model_extensions')(model_type, sync_fn) # mixin extensions
