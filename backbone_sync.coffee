@@ -7,25 +7,28 @@ inflection = require 'inflection'
 Sequelize = require 'sequelize'
 
 Schema = require 'backbone-orm/lib/schema'
-sequelize_types = require './lib/sequelize_types'
 SequelizeCursor = require './lib/sequelize_cursor'
 Utils = require 'backbone-orm/utils'
+
+SEQUELIZE_TYPES = require './lib/sequelize_types'
+SEQUELIZE_RELATIONS =
+  One: require './lib/relations/one'
+  Many: require './lib/relations/many'
 
 module.exports = class SequelizeBackboneSync
 
   constructor: (@model_type, options={}) ->
     throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
-    url_parts = URL.parse(url)
-    database_parts = url_parts.pathname.split('/')
+    @url_parts = URL.parse(url)
+    database_parts = @url_parts.pathname.split('/')
     @database = database_parts[1]
     @table = database_parts[2]
-    url_parts.pathname = @database # remove the table from the connection
+    @url_parts.pathname = @database # remove the table from the connection
 
     # publish methods and sync on model
     @model_type.model_name = Utils.urlToModelName(url)
     @model_type._sync = @
-    relation_types = { One: require('./lib/relations/one'), Many: require('./lib/relations/many') }
-    @model_type._schema = new Schema(@model_type, sequelize_types, relation_types)
+    @model_type._schema = new Schema(@model_type, SEQUELIZE_TYPES, SEQUELIZE_RELATIONS)
 
     @model_type::initialize = (json) ->
 #      console.log '------------------'
@@ -34,13 +37,13 @@ module.exports = class SequelizeBackboneSync
       for relation, relation_info of @constructor._sync.relations
 #        console.log relation_info.ids_accessor
         rel = { _orm_needs_load: true }
-        rel['id'] = json[relation_info.ids_accessor] if json[relation_info.ids_accessor]
+        rel.id = json[relation_info.ids_accessor] if json[relation_info.ids_accessor]
         @attributes[relation] = rel
 #      console.log @attributes
 #      console.log '------------------'
       return json
 
-    @sequelize = new Sequelize(URL.format(url_parts), {dialect: 'mysql', logging: false})
+    @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
     @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
