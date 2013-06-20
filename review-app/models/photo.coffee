@@ -36,7 +36,7 @@ module.exports = class ServerPhoto extends Photo
     is_corrupted: 'Boolean'
     image_id: 'String'
 
-    album: -> ['hasOne', require('./album'), indexed: true]
+    album: -> ['belongsTo', require('./album'), indexed: true]
 
   url: "#{require('../config/database')['dev']}/photos"
   sync: require('../../backbone_sync')(ServerPhoto)
