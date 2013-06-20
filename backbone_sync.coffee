@@ -75,7 +75,7 @@ module.exports = class SequelizeBackboneSync
         options.success?(json)
 
   create: (model, options) =>
-    @_relationsToForeignKeys(model)
+#    @_relationsToForeignKeys(model)
     json = model.toJSON()
     @connection.create(json)
       .success (seq_model) =>
@@ -83,7 +83,7 @@ module.exports = class SequelizeBackboneSync
         options.success?(@backbone_adapter.nativeToAttributes(seq_model))
 
   update: (model, options) =>
-    @_relationsToForeignKeys(model)
+#    @_relationsToForeignKeys(model)
     json = model.toJSON()
     @connection.update(json, model.get('id'))
       .success( -> options.success?(json))

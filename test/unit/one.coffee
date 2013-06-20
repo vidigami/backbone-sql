@@ -82,7 +82,8 @@ test_parameters =
       save_queue.await callback
 
     queue.await (err) ->
-      callback(null, MODELS.owner)
+      callback(null, _.map(MODELS.owner, (o) -> o.toJSON()))
+
 
 
 require('backbone-orm/lib/test_generators/relational/has_one')(test_parameters)
