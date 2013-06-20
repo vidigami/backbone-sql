@@ -1,3 +1,2 @@
-require './unit/flat'
-require './unit/many'
-require './unit/one'
+require './unit/backbone_orm'
+require './unit/backbone_rest'
