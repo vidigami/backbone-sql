@@ -88,7 +88,6 @@ module.exports = class SequelizeBackboneSync
   cursor: (query={}) -> return new SequelizeCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
 
   destroy: (query, callback) ->
-    [query, callback] = [{}, query] if arguments.length is 1
     @connection.destroy(query)
       .success(callback)
       .error(callback)
