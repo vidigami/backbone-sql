@@ -25,10 +25,13 @@ module.exports = class SequelizeBackboneSync
     # publish methods and sync on model
     @model_type.model_name = Utils.urlToModelName(url)
     @model_type._sync = @
-    @model_type._schema = new Schema(@model_type, SEQUELIZE_TYPES)
+    @model_type._schema = new Schema(@model_type)
 
     @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
-    @connection = @sequelize.define @model_name, @model_type._schema.fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
+
+    sequelized_fields = {}
+    sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @model_type._schema.fields
+    @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
 
@@ -39,7 +42,8 @@ module.exports = class SequelizeBackboneSync
 
     @relations = @model_type._schema.relations
     for name, relation_info of @relations
-      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, _.extend({ as: name, foreignKey: relation_info.foreign_key }, relation_info.options))
+      relation_options = _.extend({ as: name, foreignKey: relation_info.foreign_key, useJunctionTable: false }, relation_info.options)
+      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, relation_options)
 
   sync: -> return @
 

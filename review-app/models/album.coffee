@@ -31,6 +31,7 @@ module.exports = class ServerAlbum extends Album
     active: 'Boolean'
     editable: 'Boolean'
     last_changed: 'Date'
+    classroom_id: 'Integer'
 
     photos: -> ['hasMany', require('./photo')]
 

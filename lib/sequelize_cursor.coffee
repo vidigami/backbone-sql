@@ -19,7 +19,7 @@ module.exports = class SequelizeCursor extends Cursor
       find.limit = 1
     else if @_cursor.$limit
       find.limit = @_cursor.$limit
-    # args._id = {$in: _.map(ids, (id) -> new ObjectID("#{id}"))} if @_cursor.$ids # TODO
+    find.where.id = @_cursor.$ids if @_cursor.$ids
     args = [find]
 
     return @connection.count(find).error(callback).success((count) -> callback(null, count)) if count or @_cursor.$count # only the count
@@ -32,7 +32,9 @@ module.exports = class SequelizeCursor extends Cursor
     else if @_cursor.$white_list
       $fields = @_cursor.$white_list
     args.push({attributes: $fields}) if $fields
-    # args.push({raw: true}) # can't use raw or else booleans aren't mapped correctly, eg. false -> 0
+
+    #todo: can't use raw or else booleans aren't mapped correctly, eg. false -> 0
+#    args.push({raw: true})
 
     # call
     @connection.findAll.apply(@connection, args)

@@ -2,7 +2,6 @@ express = require 'express'
 http = require 'http'
 path = require 'path'
 
-init = require './initialize'
 config = require './config'
 bind_options =
   origins: config.origins()
