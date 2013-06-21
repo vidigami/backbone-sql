@@ -1,1 +1,0 @@
-web: nodemon -w testapp testapp/app.coffee
