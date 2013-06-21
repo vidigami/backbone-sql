@@ -1,7 +1,7 @@
 logger = require '../../node/logger'
 ServerPhoto = require '../../models/photo'
 RestController = require 'backbone-rest'
-Utils = require 'backbone-orm/utils'
+Utils = require 'backbone-orm/lib/utils'
 
 module.exports = class PhotosController extends RestController
 

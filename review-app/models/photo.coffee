@@ -39,4 +39,4 @@ module.exports = class ServerPhoto extends Photo
     album: -> ['belongsTo', require('./album'), indexed: true]
 
   url: "#{require('../config/database')['dev']}/photos"
-  sync: require('../../backbone_sync')(ServerPhoto)
+  sync: require('../../sync')(ServerPhoto)

@@ -4,6 +4,6 @@ test_parameters =
     created_at: 'Date'
     updated_at: 'Date'
     name: ['String', indexed: true]
-  sync: require('../../backbone_sync')
+  sync: require('../../sync')
 
 require('backbone-rest/test/generators/all')(test_parameters)

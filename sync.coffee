@@ -8,22 +8,22 @@ Sequelize = require 'sequelize'
 
 Schema = require 'backbone-orm/lib/schema'
 SequelizeCursor = require './lib/sequelize_cursor'
-Utils = require 'backbone-orm/utils'
+Utils = require 'backbone-orm/lib/utils'
 
 SEQUELIZE_TYPES = require './lib/sequelize_types'
 
-module.exports = class SequelizeBackboneSync
+module.exports = class SequelizeSync
 
   constructor: (@model_type, options={}) ->
-    throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
-    @url_parts = URL.parse(url)
+    throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
+    @url_parts = URL.parse(@url)
     database_parts = @url_parts.pathname.split('/')
     @database = database_parts[1]
     @table = database_parts[2]
     @url_parts.pathname = @database # remove the table from the connection
 
     # publish methods and sync on model
-    @model_type.model_name = Utils.urlToModelName(url)
+    @model_type.model_name = Utils.urlToModelName(@url)
     @model_type._sync = @
     @model_type._schema = new Schema(@model_type)
 
@@ -96,7 +96,7 @@ module.exports = class SequelizeBackboneSync
   relation: (key) -> @model_type._schema.relation(key)
 
 module.exports = (model_type, cache) ->
-  sync = new SequelizeBackboneSync(model_type)
+  sync = new SequelizeSync(model_type)
 
   sync_fn = (method, model, options={}) ->
     sync['initialize']()
@@ -104,4 +104,4 @@ module.exports = (model_type, cache) ->
     sync[method].apply(sync, Array::slice.call(arguments, 1))
 
   require('backbone-orm/lib/model_extensions')(model_type, sync_fn) # mixin extensions
-  return if cache then require('backbone-orm/cache_sync')(model_type, sync_fn) else sync_fn
+  return if cache then require('backbone-orm/lib/cache_sync')(model_type, sync_fn) else sync_fn

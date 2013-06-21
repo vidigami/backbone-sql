@@ -33,6 +33,6 @@
    "vidigami": "git+https://dvidi:U5RqFaNC@bitbucket.org/vidigami/vidigami#0.1.45",
     "mysql": "*",
     "bunyan": "*",
-    "inflection": "*"
+    "inflection": "1.2.x"
   }
 }
