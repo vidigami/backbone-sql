@@ -1,7 +1,7 @@
 util = require 'util'
-URL = require 'url'
 _ = require 'underscore'
 Queue = require 'queue-async'
+URL = require 'url'
 
 inflection = require 'inflection'
 Sequelize = require 'sequelize'
@@ -16,24 +16,21 @@ module.exports = class SequelizeSync
 
   constructor: (@model_type, options={}) ->
     throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
-    @url_parts = URL.parse(@url)
-    database_parts = @url_parts.pathname.split('/')
-    @database = database_parts[1]
-    @table = database_parts[2]
-    @url_parts.pathname = @database # remove the table from the connection
+    url_parts = Utils.parseUrl(@url)
 
     # publish methods and sync on model
-    @model_type.model_name = Utils.urlToModelName(@url)
+    @model_type.model_name = url_parts.model_name
     @model_type._sync = @
     @model_type._schema = new Schema(@model_type)
 
-    @sequelize = new Sequelize(URL.format(@url_parts), {dialect: 'mysql', logging: false})
-
-    sequelized_fields = {}
-    sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @model_type._schema.fields
-    @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
+    sequelize_url_parts = URL.parse(@url)
+    sequelize_url_parts.pathname = url_parts.database
+    @sequelize = new Sequelize(URL.format(sequelize_url_parts), {dialect: 'mysql', logging: false})
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
+    sequelized_fields = {}
+    sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @model_type._schema.fields
+    @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: url_parts.table, underscored: true, charset: 'utf8', timestamps: false}
 
   initialize: ->
     return if @is_initialized
