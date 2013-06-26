@@ -12,7 +12,8 @@ module.exports = class SequelizeCursor extends Cursor
   # Execution of the Query
   ##############################################
   toJSON: (callback, count) ->
-    find = {where: @backbone_adapter.attributesToNative(@_find)}
+    schema = @model_type.schema()
+    find = {where: @backbone_adapter.attributesToNative(@_find, schema)}
     find.order = _sortArgsToSequelize(@_cursor.$sort) if @_cursor.$sort
     find.offset = @_cursor.$offset if @_cursor.$offset
     if @_cursor.$one
@@ -32,16 +33,14 @@ module.exports = class SequelizeCursor extends Cursor
     else if @_cursor.$white_list
       $fields = @_cursor.$white_list
     args.push({attributes: $fields}) if $fields
-
-    #todo: can't use raw or else booleans aren't mapped correctly, eg. false -> 0
-#    args.push({raw: true})
+    args.push({raw: true})
 
     # call
     @connection.findAll.apply(@connection, args)
       .error(callback)
-      .success (seq_models) =>
-        return callback(null, if seq_models.length then @backbone_adapter.nativeToAttributes(seq_models[0]) else null) if @_cursor.$one
-        json = _.map(seq_models, (seq_model) => @backbone_adapter.nativeToAttributes(seq_model))
+      .success (json) =>
+        return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
+        @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
 
         # TODO: OPTIMIZE TO REMOVE 'id' and '_rev' if needed
         if @_cursor.$values
