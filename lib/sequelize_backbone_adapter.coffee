@@ -10,9 +10,9 @@ module.exports = class SequelizeBackboneAdapter
     return json
 
   @attributesToNative: (attributes, schema) ->
-    for key, value of attributes
-      # if schema.fields[key] and schema.fields[key].type is 'Boolean'
-      #   attributes[key] = if !!value then 1 else 0
-      if value and value.$in
-        attributes[key] = value.$in
+    # for key, value of attributes
+    #   # if schema.fields[key] and schema.fields[key].type is 'Boolean'
+    #   #   attributes[key] = if !!value then 1 else 0
+    #   if value and value.$in
+    #     attributes[key] = value.$in
     return attributes
