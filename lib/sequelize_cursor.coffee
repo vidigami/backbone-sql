@@ -12,14 +12,20 @@ module.exports = class SequelizeCursor extends Cursor
   # Execution of the Query
   ##############################################
   toJSON: (callback, count) ->
-    find = {where: @backbone_adapter.attributesToNative(@_find)}
+
+    find = {where: @_find}
     find.order = _sortArgsToSequelize(@_cursor.$sort) if @_cursor.$sort
     find.offset = @_cursor.$offset if @_cursor.$offset
     if @_cursor.$one
       find.limit = 1
     else if @_cursor.$limit
       find.limit = @_cursor.$limit
+
+    # $in to sequelize format ( field: [list, of, values] )
+    for key, value of find.where
+      find.where[key] = value.$in if value and value.$in
     find.where.id = @_cursor.$ids if @_cursor.$ids
+
     args = [find]
 
     return @connection.count(find).error(callback).success((count) -> callback(null, count)) if count or @_cursor.$count # only the count

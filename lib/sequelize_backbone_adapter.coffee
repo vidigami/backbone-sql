@@ -23,6 +23,4 @@ module.exports = class SequelizeBackboneAdapter
 
   @attributesToNative: (attributes) ->
     # TODO: handle relationship mapping
-    for key, value of attributes
-      attributes[key] = value.$in if value and value.$in
     return attributes
