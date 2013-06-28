@@ -49,7 +49,7 @@ module.exports = class SequelizeCursor extends Cursor
       .error(callback)
       .success (json) =>
         if many_relateds
-          json = unJoinJSON(json)
+          json = @unJoinJSON(json)
         return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
         @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
 
