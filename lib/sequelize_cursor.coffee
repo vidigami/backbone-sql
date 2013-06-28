@@ -12,8 +12,8 @@ module.exports = class SequelizeCursor extends Cursor
   # Execution of the Query
   ##############################################
   toJSON: (callback, count) ->
-
-    find = {where: @_find}
+    schema = @model_type.schema()
+    find = {where: @backbone_adapter.attributesToNative(@_find, schema)}
     find.order = _sortArgsToSequelize(@_cursor.$sort) if @_cursor.$sort
     find.offset = @_cursor.$offset if @_cursor.$offset
     if @_cursor.$one
@@ -22,13 +22,17 @@ module.exports = class SequelizeCursor extends Cursor
       find.limit = @_cursor.$limit
 
     # $in to sequelize format ( field: [list, of, values] )
-    for key, value of find.where
-      find.where[key] = value.$in if value and value.$in
+    (find.where[key] = value.$in) for key, value of find.where when value?.$in
     find.where.id = @_cursor.$ids if @_cursor.$ids
-
     args = [find]
 
     return @connection.count(find).error(callback).success((count) -> callback(null, count)) if count or @_cursor.$count # only the count
+
+    if @_cursor.$include
+      $include_keys = if _.isArray(@_cursor.$include) then @_cursor.$include else [@_cursor.$include]
+      find.include = (@model_type.relation(key).reverse_model_type._sync.connection for key in $include_keys)
+      many_relateds = _.some(@model_type._sync.relations, (r) -> r.type is 'hasMany')
+
 
     # only select specific fields
     if @_cursor.$values
@@ -38,16 +42,16 @@ module.exports = class SequelizeCursor extends Cursor
     else if @_cursor.$white_list
       $fields = @_cursor.$white_list
     args.push({attributes: $fields}) if $fields
-
-    #todo: can't use raw or else booleans aren't mapped correctly, eg. false -> 0
-#    args.push({raw: true})
+    args.push({raw: true})
 
     # call
     @connection.findAll.apply(@connection, args)
       .error(callback)
-      .success (seq_models) =>
-        return callback(null, if seq_models.length then @backbone_adapter.nativeToAttributes(seq_models[0]) else null) if @_cursor.$one
-        json = _.map(seq_models, (seq_model) => @backbone_adapter.nativeToAttributes(seq_model))
+      .success (json) =>
+        if many_relateds
+          json = unJoinJSON(json)
+        return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
+        @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
 
         # TODO: OPTIMIZE TO REMOVE 'id' and '_rev' if needed
         if @_cursor.$values
@@ -74,3 +78,7 @@ module.exports = class SequelizeCursor extends Cursor
         else
           callback(null, json)
     return # terminating
+
+  #todo: separate the joined data back in to proper json
+  unJoinJSON: (json) ->
+    return json

@@ -23,14 +23,15 @@ module.exports = class SequelizeSync
     @model_type._sync = @
     @model_type._schema = new Schema(@model_type)
 
+    @table = url_parts.table
     sequelize_url_parts = URL.parse(@url)
     sequelize_url_parts.pathname = url_parts.database
-    @sequelize = new Sequelize(URL.format(sequelize_url_parts), {dialect: 'mysql', logging: false})
+    @sequelize = require('./lib/sequelize_connection').get(URL.format(sequelize_url_parts))
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
     sequelized_fields = {}
     sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @model_type._schema.fields
-    @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: url_parts.table, underscored: true, charset: 'utf8', timestamps: false}
+    @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
 
   initialize: ->
     return if @is_initialized
@@ -39,7 +40,8 @@ module.exports = class SequelizeSync
 
     @relations = @model_type._schema.relations
     for name, relation_info of @relations
-      relation_options = _.extend({ as: name, foreignKey: relation_info.foreign_key, useJunctionTable: false }, relation_info.options)
+      # sequelize requires the 'as' property to match the tablename of the relation. todo: fix
+      relation_options = _.extend({ as: relation_info.reverse_model_type._sync.table, foreignKey: relation_info.foreign_key, useJunctionTable: false }, relation_info.options)
       @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, relation_options)
 
   ###################################
@@ -64,7 +66,7 @@ module.exports = class SequelizeSync
     @connection.create(json)
       .success (seq_model) =>
         return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless seq_model
-        options.success?(@backbone_adapter.nativeToAttributes(seq_model))
+        options.success?(@backbone_adapter.nativeToAttributes(seq_model.values, @model_type.schema()))
 
   update: (model, options) =>
     json = model.toJSON()

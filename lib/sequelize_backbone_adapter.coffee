@@ -1,26 +1,26 @@
 util = require 'util'
+inflection = require 'inflection'
 _ = require 'underscore'
 
+# TODO: handle relationship mapping
 module.exports = class SequelizeBackboneAdapter
-  # todo: relations
+  @nativeToAttributes: (json, schema) ->
+    for key of json
+      if schema.fields[key] and schema.fields[key].type is 'Boolean'
+        json[key] = !!json[key]
 
-  @nativeToModel: (seq_model, model_type) ->
-    model = new model_type()
-    if seq_model
-      model = model.set(model.parse(@nativeToAttributes(seq_model)))
-      model._seq_model = seq_model
-    return model
+      # hack to get around sequelize requiring table names as relation fields
+      if not schema.relation(key) and schema.relation(single = inflection.singularize(key))
+        json[single] = json[key]
+        delete json[key]
 
-  @nativeToAttributes: (seq_model) ->
-    # TODO: handle relationship mapping
-    attributes = {}
-    for key in seq_model.attributes
-      if _.isUndefined(seq_model[key])
-        attributes[key] = null
-      else
-        attributes[key] = seq_model[key]
-    return attributes
+#    console.log json
+    return json
 
-  @attributesToNative: (attributes) ->
-    # TODO: handle relationship mapping
+  @attributesToNative: (attributes, schema) ->
+    # for key, value of attributes
+    #   # if schema.fields[key] and schema.fields[key].type is 'Boolean'
+    #   #   attributes[key] = if !!value then 1 else 0
+    #   if value and value.$in
+    #     attributes[key] = value.$in
     return attributes
