@@ -24,7 +24,6 @@ module.exports = class SequelizeCursor extends Cursor
     # $in to sequelize format ( field: [list, of, values] )
     (find.where[key] = value.$in) for key, value of find.where when value?.$in
     find.where.id = @_cursor.$ids if @_cursor.$ids
-    args = [find]
 
     return @connection.count(find).error(callback).success((count) -> callback(null, count)) if count or @_cursor.$count # only the count
 
@@ -33,7 +32,6 @@ module.exports = class SequelizeCursor extends Cursor
       find.include = (@model_type.relation(key).reverse_model_type._sync.connection for key in $include_keys)
       many_relateds = _.some(@model_type._sync.relations, (r) -> r.type is 'hasMany')
 
-
     # only select specific fields
     if @_cursor.$values
       $fields = if @_cursor.$white_list then _.intersection(@_cursor.$values, @_cursor.$white_list) else @_cursor.$values
@@ -41,15 +39,15 @@ module.exports = class SequelizeCursor extends Cursor
       $fields = if @_cursor.$white_list then _.intersection(@_cursor.$select, @_cursor.$white_list) else @_cursor.$select
     else if @_cursor.$white_list
       $fields = @_cursor.$white_list
-    args.push({attributes: $fields}) if $fields
+
+    find.attributes = $fields if $fields
+    args = [find]
     args.push({raw: true})
 
     # call
     @connection.findAll.apply(@connection, args)
       .error(callback)
       .success (json) =>
-        if many_relateds
-          json = @unJoinJSON(json)
         return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
         @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
 
