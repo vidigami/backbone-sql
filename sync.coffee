@@ -16,15 +16,15 @@ module.exports = class SequelizeSync
 
   constructor: (@model_type, options={}) ->
     throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
+    url_parts = Utils.parseUrl(@url)
 
     # publish methods and sync on model
-    @model_type.model_name = Utils.parseUrl(@url).model_name unless @model_type.model_name # model_name can be manually set
+    @model_type.model_name = url_parts.model_name unless @model_type.model_name # model_name can be manually set
     throw new Error('Missing model_name for model') unless @model_type.model_name
     @model_type._sync = @
     @model_type._schema = new Schema(@model_type)
+    @model_type._table = url_parts.table
 
-    url_parts = Utils.parseUrl(@url)
-    @table = url_parts.table
     sequelize_url_parts = URL.parse(@url)
     sequelize_url_parts.pathname = url_parts.database
     @sequelize = require('./lib/sequelize_connection').get(URL.format(sequelize_url_parts))
@@ -32,18 +32,18 @@ module.exports = class SequelizeSync
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
     sequelized_fields = {}
     sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @model_type._schema.fields
-    @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @table, underscored: true, charset: 'utf8', timestamps: false}
+    @model_type._connection = @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @model_type._table, underscored: true, charset: 'utf8', timestamps: false}
 
   initialize: ->
-    return if @is_initialized
-    @is_initialized = true
+    return if @is_initialized; @is_initialized = true
     @model_type._schema.initialize()
 
     @relations = @model_type._schema.relations
     for name, relation_info of @relations
       # sequelize requires the 'as' property to match the tablename of the relation. todo: fix
-      relation_options = _.extend({ as: relation_info.reverse_model_type._sync.table, foreignKey: relation_info.foreign_key, useJunctionTable: false }, relation_info.options)
-      @connection[relation_info.type](relation_info.reverse_model_type._sync.connection, relation_options)
+      relation_options = _.extend({as: relation_info.reverse_model_type._table, foreignKey: relation_info.foreign_key, useJunctionTable: false}, relation_info.options)
+      @connection[relation_info.type](relation_info.reverse_model_type._connection, relation_options)
+    return
 
   ###################################
   # Classic Backbone Sync
@@ -96,11 +96,11 @@ module.exports = class SequelizeSync
 module.exports = (model_type, cache) ->
   sync = new SequelizeSync(model_type)
 
-  sync_fn = (method, model, options={}) ->
-    sync['initialize']()
+  sync.fn = (method, model, options={}) -> # save for access by model extensions
+    sync.initialize()
     return module.exports.apply(null, Array::slice.call(arguments, 1)) if method is 'createSync' # create a new sync
     return sync if method is 'sync'
     sync[method].apply(sync, Array::slice.call(arguments, 1))
 
-  require('backbone-orm/lib/model_extensions')(model_type, sync_fn) # mixin extensions
-  return if cache then require('backbone-orm/lib/cache_sync')(model_type, sync_fn) else sync_fn
+  require('backbone-orm/lib/model_extensions')(model_type) # mixin extensions
+  return if cache then require('backbone-orm/lib/cache_sync')(model_type, sync.fn) else sync.fn
