@@ -16,13 +16,14 @@ module.exports = class SequelizeSync
 
   constructor: (@model_type, options={}) ->
     throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
-    url_parts = Utils.parseUrl(@url)
 
     # publish methods and sync on model
-    @model_type.model_name = url_parts.model_name
+    @model_type.model_name = Utils.parseUrl(@url).model_name unless @model_type.model_name # model_name can be manually set
+    throw new Error('Missing model_name for model') unless @model_type.model_name
     @model_type._sync = @
     @model_type._schema = new Schema(@model_type)
 
+    url_parts = Utils.parseUrl(@url)
     @table = url_parts.table
     sequelize_url_parts = URL.parse(@url)
     sequelize_url_parts.pathname = url_parts.database
