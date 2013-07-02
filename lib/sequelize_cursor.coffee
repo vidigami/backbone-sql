@@ -29,8 +29,8 @@ module.exports = class SequelizeCursor extends Cursor
 
     if @_cursor.$include
       $include_keys = if _.isArray(@_cursor.$include) then @_cursor.$include else [@_cursor.$include]
-      find.include = (@model_type.relation(key).reverse_model_type._sync.connection for key in $include_keys)
-      many_relateds = _.some(@model_type._sync.relations, (r) -> r.type is 'hasMany')
+      find.include = (@model_type.relation(key).reverse_model_type._connection for key in $include_keys)
+      many_relateds = _.some(@model_type._relations, (r) -> r.type is 'hasMany')
 
     # only select specific fields
     if @_cursor.$values
