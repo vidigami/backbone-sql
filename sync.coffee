@@ -21,8 +21,7 @@ module.exports = class SequelizeSync
     # publish methods and sync on model
     @model_type.model_name = url_parts.model_name unless @model_type.model_name # model_name can be manually set
     throw new Error('Missing model_name for model') unless @model_type.model_name
-    @model_type._sync = @
-    @model_type._schema = new Schema(@model_type)
+    @schema = new Schema(@model_type)
     @model_type._table = url_parts.table
 
     sequelize_url_parts = URL.parse(@url)
@@ -31,14 +30,14 @@ module.exports = class SequelizeSync
 
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
     sequelized_fields = {}
-    sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @model_type._schema.fields
+    sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @schema.fields
     @model_type._connection = @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @model_type._table, underscored: true, charset: 'utf8', timestamps: false}
 
   initialize: ->
     return if @is_initialized; @is_initialized = true
-    @model_type._schema.initialize()
+    @schema.initialize()
 
-    @relations = @model_type._schema.relations
+    @model_type._relations = @schema.relations
     for name, relation_info of @relations
       # sequelize requires the 'as' property to match the tablename of the relation. todo: fix
       relation_options = _.extend({as: relation_info.reverse_model_type._table, foreignKey: relation_info.foreign_key, useJunctionTable: false}, relation_info.options)
@@ -90,17 +89,16 @@ module.exports = class SequelizeSync
       .success(callback)
       .error(callback)
 
-  schema: (key) -> @model_type._schema
-  relation: (key) -> @model_type._schema.relation(key)
 
 module.exports = (model_type, cache) ->
   sync = new SequelizeSync(model_type)
 
-  sync.fn = (method, model, options={}) -> # save for access by model extensions
+  model_type::sync = sync_fn = (method, model, options={}) -> # save for access by model extensions
     sync.initialize()
     return module.exports.apply(null, Array::slice.call(arguments, 1)) if method is 'createSync' # create a new sync
     return sync if method is 'sync'
-    sync[method].apply(sync, Array::slice.call(arguments, 1))
+    return sync.schema if method is 'schema'
+    if sync[method] then sync[method].apply(sync, Array::slice.call(arguments, 1)) else return undefined
 
   require('backbone-orm/lib/model_extensions')(model_type) # mixin extensions
-  return if cache then require('backbone-orm/lib/cache_sync')(model_type, sync.fn) else sync.fn
+  return if cache then require('backbone-orm/lib/cache_sync')(model_type, sync_fn) else sync_fn
