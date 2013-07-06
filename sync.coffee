@@ -15,34 +15,19 @@ SEQUELIZE_TYPES = require './lib/sequelize_types'
 module.exports = class SequelizeSync
 
   constructor: (@model_type, options={}) ->
-    throw new Error("Missing url for model") unless @url = _.result(@model_type.prototype, 'url')
-    url_parts = Utils.parseUrl(@url)
-
-    # publish methods and sync on model
-    @model_type.model_name = url_parts.model_name unless @model_type.model_name # model_name can be manually set
-    throw new Error('Missing model_name for model') unless @model_type.model_name
     @schema = new Schema(@model_type)
-    @model_type._table = url_parts.table
-
-    sequelize_url_parts = URL.parse(@url)
-    sequelize_url_parts.pathname = url_parts.database
-    @sequelize = require('./lib/sequelize_connection').get(URL.format(sequelize_url_parts))
-
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
-    sequelized_fields = {}
-    sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @schema.fields
-    @model_type._connection = @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @model_type._table, underscored: true, charset: 'utf8', timestamps: false}
 
   initialize: ->
     return if @is_initialized; @is_initialized = true
-    @schema.initialize()
 
-    @model_type._relations = @schema.relations
-    for name, relation_info of @relations
-      # sequelize requires the 'as' property to match the tablename of the relation. todo: fix
-      relation_options = _.extend({as: relation_info.reverse_model_type._table, foreignKey: relation_info.foreign_key, useJunctionTable: false}, relation_info.options)
-      @connection[relation_info.type](relation_info.reverse_model_type._connection, relation_options)
-    return
+    throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
+
+    # publish methods and sync on model
+    @model_type.model_name = Utils.parseUrl(url).model_name unless @model_type.model_name # model_name can be manually set
+    throw new Error('Missing model_name for model') unless @model_type.model_name
+
+    @connect(url)
 
   ###################################
   # Classic Backbone Sync
@@ -89,6 +74,30 @@ module.exports = class SequelizeSync
       .success(callback)
       .error(callback)
 
+  ###################################
+  # Backbone SQL Sync - Custom Extensions
+  ###################################
+  connect: (url) ->
+    return if @connection and @connection.url is url
+    # @connection.destroy() if @connection
+    url_parts = Utils.parseUrl(url)
+
+    sequelize_url_parts = URL.parse(url)
+    sequelize_url_parts.pathname = url_parts.database
+    @sequelize = require('./lib/sequelize_connection').get(URL.format(sequelize_url_parts))
+
+    sequelized_fields = {}
+    sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @schema.fields
+    @model_type._table = url_parts.table
+    @model_type._connection = @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @model_type._table, underscored: true, charset: 'utf8', timestamps: false}
+    @model_type._relations = @schema.relations
+
+    @schema.initialize()
+
+    for name, relation_info of @schema.relations
+      # sequelize requires the 'as' property to match the tablename of the relation. todo: fix
+      relation_options = _.extend({as: relation_info.reverse_model_type._table, foreignKey: relation_info.foreign_key, useJunctionTable: false}, relation_info.options)
+      @connection[relation_info.type](relation_info.reverse_model_type._connection, relation_options)
 
 module.exports = (model_type, cache) ->
   sync = new SequelizeSync(model_type)
