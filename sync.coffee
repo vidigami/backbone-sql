@@ -31,7 +31,10 @@ module.exports = class SequelizeSync
     @backbone_adapter = require './lib/sequelize_backbone_adapter'
     sequelized_fields = {}
     sequelized_fields[field] = SEQUELIZE_TYPES[options.type] for field, options of @schema.fields
-    @model_type._connection = @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @model_type._table, underscored: true, charset: 'utf8', timestamps: false}
+
+    #todo: sequelize options in model defninition?
+    timestamps = @schema.fields.created_at and @schema.fields.updated_at
+    @model_type._connection = @connection = @sequelize.define @model_name, sequelized_fields, {freezeTableName: true, tableName: @model_type._table, underscored: true, charset: 'utf8', timestamps: timestamps}
 
   initialize: ->
     return if @is_initialized; @is_initialized = true
