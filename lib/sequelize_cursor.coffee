@@ -2,10 +2,40 @@ util = require 'util'
 _ = require 'underscore'
 
 Cursor = require 'backbone-orm/lib/cursor'
+SequelizeUtils = require 'sequelize/lib/utils'
 
 _sortArgsToSequelize = (args) ->
   args = if _.isArray(args) then args else [args]
   return ((if arg[0] is '-' then arg.substr(1) + ' DESC' else arg) for arg in args)
+
+COMPARATORS = ['$lt', '$lte', '$gt', '$gte']
+_appendComparator = (query, comparator, key, value) ->
+  switch comparator
+    when '$lt' then sym = '<'
+    when '$lte' then sym = '<='
+    when '$gt' then sym = '>'
+    when '$gte' then sym = '>='
+
+  query[0] += ' AND ' if query[0].length
+  query[0] += "#{key} #{sym} ?"
+  value = value[comparator]
+  query.push if _.isDate(value) then SequelizeUtils.toSqlDate(value) else "#{value}"
+  return query
+
+_queryToSequelize = (find, cursor) ->
+  # $in to sequelize format ( field: [list, of, values] )
+  where = {}
+  for key, value of find
+    continue unless (where[key] = value)
+    if value.$in
+      where[key] = value.$in
+    else if value.$lt or value.$lte or value.$gt or value.$gte
+      query = ['']
+      _appendComparator(query, comparator, key, value) for comparator in COMPARATORS when value[comparator]
+      where = query # TODO: allow for combining queries
+
+  where.id = cursor.$ids if cursor.$ids
+  return where
 
 module.exports = class SequelizeCursor extends Cursor
   ##############################################
@@ -13,17 +43,13 @@ module.exports = class SequelizeCursor extends Cursor
   ##############################################
   toJSON: (callback, count) ->
     schema = @model_type.schema()
-    find = {where: @backbone_adapter.attributesToNative(@_find, schema)}
+    find = {where: _queryToSequelize(@_find, @_cursor)}
     find.order = _sortArgsToSequelize(@_cursor.$sort) if @_cursor.$sort
     find.offset = @_cursor.$offset if @_cursor.$offset
     if @_cursor.$one
       find.limit = 1
     else if @_cursor.$limit
       find.limit = @_cursor.$limit
-
-    # $in to sequelize format ( field: [list, of, values] )
-    (find.where[key] = value.$in) for key, value of find.where when value?.$in
-    find.where.id = @_cursor.$ids if @_cursor.$ids
 
     return @connection.count(find).error(callback).success((count) -> callback(null, count)) if count or @_cursor.$count # only the count
 
