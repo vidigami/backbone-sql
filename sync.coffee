@@ -41,9 +41,9 @@ module.exports = class SequelizeSync
 
     # a model
     else
-      @cursor(model.get('id')).toJSON (err, json) ->
+      @cursor(model.id).toJSON (err, json) ->
         return options.error(err) if err
-        return options.error(new Error "Model not found. Id #{model.get('id')}") if not json
+        return options.error(new Error "Model not found. Id #{model.id}") if not json
         options.success?(json)
 
   create: (model, options) =>
@@ -55,12 +55,12 @@ module.exports = class SequelizeSync
 
   update: (model, options) =>
     json = model.toJSON()
-    @connection.update(json, model.get('id'))
+    @connection.update(json, model.id)
       .success( -> options.success?(json))
       .error (err) -> options.error(err)
 
   delete: (model, options) ->
-    @connection.destroy(model.get('id'))
+    @connection.destroy(model.id)
       .success( -> options.success?(model))
       .error (err) -> options.error(err)
 
