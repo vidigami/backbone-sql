@@ -1,0 +1,39 @@
+{
+  "name": "backbone-sql",
+  "version": "0.0.1c",
+  "main": "sync",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://bitbucket.org/vidigami/backbone-sql.git"
+  },
+  "scripts": {
+    "start": "foreman start -f Procfile.dev",
+    "test": "NODE_ENV=test mocha test/suite.coffee --compilers coffee:coffee-script --reporter spec --timeout 2000"
+  },
+  "engines": {
+    "node": "0.10.x",
+    "npm": "1.2.x"
+  },
+  "devDependencies": {
+    "mocha": "*",
+    "express": "3.2.x",
+    "supertest": "0.7.0",
+    "grunt": "0.4.x",
+    "grunt-contrib-coffee": "0.7.x",
+    "grunt-contrib-copy": "0.4.x",
+    "grunt-contrib-watch": "0.4.x"
+  },
+  "dependencies": {
+    "coffee-script": "*",
+    "sequelize": "*",
+    "mysql": "2.0.x",
+    "underscore": "1.4.x",
+    "backbone": "*",
+    "backbone-rest": "git+https://dvidi:U5RqFaNC@bitbucket.org/vidigami/backbone-rest",
+    "backbone-orm": "git+https://dvidi:U5RqFaNC@bitbucket.org/vidigami/backbone-orm",
+    "moment": "2.0.x",
+    "queue-async": "1.0.x",
+    "inflection": "1.2.x"
+  }
+}
