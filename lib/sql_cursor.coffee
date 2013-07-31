@@ -1,6 +1,5 @@
 util = require 'util'
 _ = require 'underscore'
-
 Knex = require 'knex'
 
 Cursor = require 'backbone-orm/lib/cursor'
@@ -17,8 +16,9 @@ _knexConditional = (comparator, key, value) ->
 
 _appendWhere = (query, find, cursor) ->
   for key, value of find
+    continue if _.isUndefined(value)
     if value.$in
-      query.whereIn(key, value.$in)
+      if value.$in?.length then query.whereIn(key, value.$in) else (query.abort = true; return query)
     else if value.$lt or value.$lte or value.$gt or value.$gte
       conditional = _knexConditional(comparator, key, value) for comparator in _.keys(COMPARATORS) when value[comparator]
       query.where(key, conditional.condition, conditional.value)
@@ -39,14 +39,15 @@ _appendSort = (query, sorts) ->
     query.orderBy(col, dir)
   return query
 
-module.exports = class SequelizeCursor extends Cursor
+module.exports = class SqlCursor extends Cursor
 
   toJSON: (callback, count) ->
     schema = @model_type.schema()
 
-    query = Knex(@model_type._table)
+    query = _appendWhere(@connection(@model_type._table), @_find, @_cursor)
 
-    query = _appendWhere(query, @_find, @_cursor)
+    # $in : [] or another invalid clause has been given
+    return callback(null, if @_cursor.$count then 0 else if @_cursor.$one then null else []) if query.abort
 
     if count or @_cursor.$count
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
@@ -71,6 +72,8 @@ module.exports = class SequelizeCursor extends Cursor
     query.offset(@_cursor.$offset) if @_cursor.$offset
     _appendSort(query, @_cursor.$sort) if @_cursor.$sort
 
+    console.log query.toString()
+    console.log '----------------------'
     return query.exec (err, json) =>
       return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
       @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json

@@ -8,7 +8,6 @@ Schema = require 'backbone-orm/lib/schema'
 Utils = require 'backbone-orm/lib/utils'
 
 SqlCursor = require './lib/sql_cursor'
-SEQUELIZE_TYPES = require './lib/sequelize_types'
 
 module.exports = class SqlSync
 
@@ -78,9 +77,8 @@ module.exports = class SqlSync
   ###################################
   connect: (url) ->
     return if @connection and @connection.url is url
-    # @connection.destroy() if @connection
     url_parts = Utils.parseUrl(url)
-    @connection = require('./lib/knex_connection').get(url_parts)
+    @model_type._connection = @connection = require('./lib/knex_connection').get(url_parts)
 
 #    sequelize_timestamps = @schema.fields.created_at and @schema.fields.updated_at
     @model_type._table = url_parts.table
@@ -88,11 +86,6 @@ module.exports = class SqlSync
     @model_type._fields = @schema.fields
 
     @schema.initialize()
-
-#    for name, relation_info of @schema.relations
-#      # sequelize requires the 'as' property to match the tablename of the relation. todo: fix
-#      relation_options = _.extend({as: relation_info.reverse_model_type._table, foreignKey: relation_info.foreign_key, useJunctionTable: false}, relation_info.options)
-#      @connection[relation_info.type](relation_info.reverse_model_type._connection, relation_options)
 
 module.exports = (model_type, cache) ->
   sync = new SqlSync(model_type)
