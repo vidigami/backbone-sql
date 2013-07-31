@@ -49,7 +49,7 @@ module.exports = class SyncDB
                 table.integer(relation.foreign_key).nullable()
               else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
                 #todo: many to many join table creation
-                console.log 'manytomany'
+                console.log 'todo: manytomany'
           ).then(
             ( ->
               console.log('created table', model_type._table) if options.verbose

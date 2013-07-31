@@ -10,21 +10,20 @@ COMPARATORS =
   $gt: '>'
   $gte: '>='
 
-# Transform a conditional of type {key: {$lt: 5}} to {condition: '<', value: 5}
-_knexConditional = (comparator, key, value) ->
-  return {condition: COMPARATORS[comparator], value: value[comparator]}
-
 _appendWhere = (query, find, cursor) ->
   for key, value of find
     continue if _.isUndefined(value)
     if value.$in
       if value.$in?.length then query.whereIn(key, value.$in) else (query.abort = true; return query)
     else if value.$lt or value.$lte or value.$gt or value.$gte
+      # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
       (condition = COMPARATORS[comparator]; parameter = value[comparator]) for comparator in _.keys(COMPARATORS) when value[comparator]
       query.where(key, condition, parameter)
     else
       query.where(key, value)
-  query.whereIn(id, cursor.$ids) if cursor.$ids
+  if cursor.$ids
+    (query.abort = true; return query) unless cursor.$ids.length
+    query.whereIn(id, cursor.$ids)
   return query
 
 _appendSort = (query, sorts) ->
@@ -52,12 +51,6 @@ module.exports = class SqlCursor extends Cursor
     if count or @_cursor.$count
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
 
-    if @_cursor.$include
-      console.log 'todo: include'
-#      $include_keys = if _.isArray(@_cursor.$include) then @_cursor.$include else [@_cursor.$include]
-#      find.include = (@model_type.relation(key).reverse_model_type._connection for key in $include_keys)
-#      many_relateds = _.some(@model_type._relations, (r) -> r.type is 'hasMany')
-
     # only select specific fields
     if @_cursor.$values
       $fields = if @_cursor.$white_list then _.intersection(@_cursor.$values, @_cursor.$white_list) else @_cursor.$values
@@ -66,13 +59,50 @@ module.exports = class SqlCursor extends Cursor
     else if @_cursor.$white_list
       $fields = @_cursor.$white_list
 
-    query.select($fields if $fields)
+    if @_cursor.$include
+      console.log '--------------------'
+      @include_keys = if _.isArray(@_cursor.$include) then @_cursor.$include else [@_cursor.$include]
+
+      if $fields
+        from_columns = ("_#{@model_type._table}_#{field}" for field in $fields)
+      else
+        from_columns = schema.allColumns()
+      from_columns.push('id')
+      from_columns = ("#{@model_type._table}.#{col} as #{@tablePrefix(@model_type)}#{col}" for col in from_columns)
+      to_columns = []
+
+      for key in @include_keys
+        relation = @model_type.relation(key)
+        related_model = relation.reverse_relation.model_type
+
+        if relation.type is 'belongsTo'
+          from_key = "#{@model_type._table}.#{relation.foreign_key}"
+          to_key = "#{related_model._table}.id"
+        else
+          from_key = "#{@model_type._table}.id"
+          to_key = "#{related_model._table}.#{relation.foreign_key}"
+
+        building_columns = ['id'].concat(relation.reverse_relation.model_type.schema().allColumns())
+        to_columns = to_columns.concat("#{related_model._table}.#{col} as #{@tablePrefix(related_model)}#{col}" for col in building_columns)
+
+      query.select(from_columns.concat(to_columns))
+      query.join(related_model._table, from_key, '=', to_key)
+
+#      many_relateds = _.some(@model_type._relations, (r) -> r.type is 'hasMany')
+
+    query.select($fields if $fields) unless @_cursor.$include
     query.limit(1) if @_cursor.$one
     query.limit(@_cursor.$limit) if @_cursor.$limit
     query.offset(@_cursor.$offset) if @_cursor.$offset
     _appendSort(query, @_cursor.$sort) if @_cursor.$sort
 
+    console.log query.toString()
+    console.log '--------------------'
     return query.exec (err, json) =>
+
+      if @_cursor.$include
+        json = @parseInclude(json)
+
       return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
       @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
 
@@ -98,3 +128,22 @@ module.exports = class SqlCursor extends Cursor
           callback(null, json)
       else
         callback(null, json)
+
+  tablePrefix: (model_type) -> "_#{model_type._table}_"
+
+  parseInclude: (raw_json) ->
+    console.log raw_json
+    json = []
+    for key in @include_keys
+      relation = @model_type.relation(key)
+      related_model = relation.reverse_relation.model_type
+      for row in raw_json
+        model_json = {}
+        related_json = model_json[relation.key] = {}
+        for key, value of row
+          if match = new RegExp("^#{@tablePrefix(@model_type)}(.*)$").exec(key)
+            model_json[match[1]] = value
+          else if match = new RegExp("^#{@tablePrefix(related_model)}(.*)$").exec(key)
+            related_json[match[1]] = value
+        json.push(model_json)
+    return json
