@@ -10,20 +10,47 @@ COMPARATORS =
   $gt: '>'
   $gte: '>='
 
-_appendWhere = (query, find, cursor) ->
+_appendCondition = (conditions, key, value) ->
+  if value.$in
+    if value.$in?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
+  else if value.$lt or value.$lte or value.$gt or value.$gte
+    # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
+    (operator = COMPARATORS[comparator]; parameter = value[comparator]) for comparator in _.keys(COMPARATORS) when value[comparator]
+    conditions.where_conditionals.push({key: key, operator: operator, value: parameter})
+  else
+    conditions.wheres.push({key: key, value: value})
+  return conditions
+
+_parseConditions = (find, cursor) ->
+  conditions = {wheres: [], where_conditionals: [], where_ins: [], related_wheres: {}}
+  related_wheres = {}
   for key, value of find
     continue if _.isUndefined(value)
-    if value.$in
-      if value.$in?.length then query.whereIn(key, value.$in) else (query.abort = true; return query)
-    else if value.$lt or value.$lte or value.$gt or value.$gte
-      # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
-      (condition = COMPARATORS[comparator]; parameter = value[comparator]) for comparator in _.keys(COMPARATORS) when value[comparator]
-      query.where(key, condition, parameter)
+
+    # A dot indicates a condition on a related model
+    if key.indexOf('.') > 0
+      [relation, key] = key.split('.')
+      related_wheres[relation] or= {}
+      related_wheres[relation][key] = value
     else
-      query.where(key, value)
-  if cursor.$ids
-    (query.abort = true; return query) unless cursor.$ids.length
-    query.whereIn(id, cursor.$ids)
+      _appendCondition(conditions, key, value)
+
+  # Parse conditions on related models in the same way
+  conditions.related_wheres[relation] = _parseConditions(related_conditions) for relation, related_conditions of related_wheres
+
+  if cursor?.$ids
+    (conditions.abort = true; return conditions) unless cursor.$ids.length
+    conditions.where_ins.push({key: id, value: cursor.$ids})
+
+  return conditions
+
+_appendWhere = (query, conditions) ->
+  for condition in conditions.wheres
+    query.where(condition.key, condition.value)
+  for condition in conditions.where_conditionals
+    query.where(condition.key, condition.operator, condition.value)
+  for condition in conditions.where_ins
+    query.whereIn(condition.key, condition.value)
   return query
 
 _appendSort = (query, sorts) ->
@@ -43,10 +70,13 @@ module.exports = class SqlCursor extends Cursor
   toJSON: (callback, count) ->
     schema = @model_type.schema()
 
-    query = _appendWhere(@connection(@model_type._table), @_find, @_cursor)
+    query = @connection(@model_type._table)
+    conditions = _parseConditions(@_find, @_cursor)
 
-    # $in : [] or another invalid clause has been given
-    return callback(null, if @_cursor.$count then 0 else if @_cursor.$one then null else []) if query.abort
+    # $in : [] or another query that would result in an empty result set in mongo has been given
+    return callback(null, if @_cursor.$count then 0 else if @_cursor.$one then null else []) if conditions.abort
+
+    _appendWhere(query, conditions)
 
     if count or @_cursor.$count
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
@@ -116,7 +146,7 @@ module.exports = class SqlCursor extends Cursor
         json = _.map(json, (item) => _.pick(item, @_cursor.$white_list))
 
       if @_cursor.$page or @_cursor.$page is ''
-        _appendWhere(@connection(@model_type._table), @_find, @_cursor).count('*').exec (err, count_json) =>
+        _appendWhere(@connection(@model_type._table), conditions).count('*').exec (err, count_json) =>
           json =
             offset: @_cursor.$offset
             total_rows: if count_json.length then count_json[0].aggregate else 0
