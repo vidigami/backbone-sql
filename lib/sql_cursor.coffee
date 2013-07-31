@@ -20,8 +20,8 @@ _appendWhere = (query, find, cursor) ->
     if value.$in
       if value.$in?.length then query.whereIn(key, value.$in) else (query.abort = true; return query)
     else if value.$lt or value.$lte or value.$gt or value.$gte
-      conditional = _knexConditional(comparator, key, value) for comparator in _.keys(COMPARATORS) when value[comparator]
-      query.where(key, conditional.condition, conditional.value)
+      (condition = COMPARATORS[comparator]; parameter = value[comparator]) for comparator in _.keys(COMPARATORS) when value[comparator]
+      query.where(key, condition, parameter)
     else
       query.where(key, value)
   query.whereIn(id, cursor.$ids) if cursor.$ids
@@ -72,8 +72,6 @@ module.exports = class SqlCursor extends Cursor
     query.offset(@_cursor.$offset) if @_cursor.$offset
     _appendSort(query, @_cursor.$sort) if @_cursor.$sort
 
-    console.log query.toString()
-    console.log '----------------------'
     return query.exec (err, json) =>
       return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
       @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
@@ -92,7 +90,7 @@ module.exports = class SqlCursor extends Cursor
         json = _.map(json, (item) => _.pick(item, @_cursor.$white_list))
 
       if @_cursor.$page or @_cursor.$page is ''
-        _appendWhere(Knex(@model_type._table), @_find, @_cursor).count('*').exec (err, count_json) =>
+        _appendWhere(@connection(@model_type._table), @_find, @_cursor).count('*').exec (err, count_json) =>
           json =
             offset: @_cursor.$offset
             total_rows: if count_json.length then count_json[0].aggregate else 0
