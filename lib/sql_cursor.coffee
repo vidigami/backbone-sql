@@ -9,14 +9,18 @@ COMPARATORS =
   $lte: '<='
   $gt: '>'
   $gte: '>='
+  $ne: '!='
 
 _appendCondition = (conditions, key, value) ->
-  if value.$in
+  if value?.$in
     if value.$in?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
-  else if value.$lt or value.$lte or value.$gt or value.$gte
-    # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
-    (operator = COMPARATORS[comparator]; parameter = value[comparator]) for comparator in _.keys(COMPARATORS) when value[comparator]
+
+  # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
+  else if mongo_op = _.find(_.keys(COMPARATORS), (test) -> value.hasOwnProperty(test))
+    parameter = value[mongo_op]
+    operator = COMPARATORS[mongo_op]
     conditions.where_conditionals.push({key: key, operator: operator, value: parameter})
+
   else
     conditions.wheres.push({key: key, value: value})
   return conditions
@@ -44,13 +48,15 @@ _parseConditions = (find, cursor) ->
 
   return conditions
 
-_appendWhere = (query, conditions) ->
+_columnName = (col, table) -> if table then "#{table}.#{col}" else col
+
+_appendWhere = (query, conditions, table) ->
   for condition in conditions.wheres
-    query.where(condition.key, condition.value)
+    query.where(_columnName(condition.key, table), condition.value)
   for condition in conditions.where_conditionals
-    query.where(condition.key, condition.operator, condition.value)
+    query.where(_columnName(condition.key, table), condition.operator, condition.value)
   for condition in conditions.where_ins
-    query.whereIn(condition.key, condition.value)
+    query.whereIn(_columnName(condition.key, table), condition.value)
   return query
 
 _appendSort = (query, sorts) ->
@@ -64,6 +70,7 @@ _appendSort = (query, sorts) ->
       col = sort
     query.orderBy(col, dir)
   return query
+
 
 module.exports = class SqlCursor extends Cursor
 
@@ -91,43 +98,60 @@ module.exports = class SqlCursor extends Cursor
 
     if @_cursor.$include
       @include_keys = if _.isArray(@_cursor.$include) then @_cursor.$include else [@_cursor.$include]
+      throw Error("Invalid include specified: #{@include_keys}") unless @include_keys.length
 
-      from_columns = if $fields then _.clone($fields) else schema.allColumns()
-      from_columns.push('id') unless 'id' in from_columns
-      from_columns = ("#{@model_type._table}.#{col} as #{@tablePrefix(@model_type)}#{col}" for col in from_columns)
+      # Join the related tables
+      @joined = true
       to_columns = []
-
       for key in @include_keys
-        relation = @model_type.relation(key)
+        relation = @_getRelation(key)
         related_model = relation.reverse_relation.model_type
 
-        if relation.type is 'belongsTo'
-          from_key = "#{@model_type._table}.#{relation.foreign_key}"
-          to_key = "#{related_model._table}.id"
-        else
-          from_key = "#{@model_type._table}.id"
-          to_key = "#{related_model._table}.#{relation.foreign_key}"
+        # Compile the columns for the related model and prefix them with its table name
+        to_columns = to_columns.concat(@_prefixColumns(related_model))
 
-        building_columns = relation.reverse_relation.model_type.schema().allColumns()
-        building_columns.push('id') unless 'id' in from_columns
-        to_columns = to_columns.concat("#{related_model._table}.#{col} as #{@tablePrefix(related_model)}#{col}" for col in building_columns)
+        @_joinTo(query, relation)
 
-        query.join(related_model._table, from_key, '=', to_key)
+        # Use the full table name when adding the where clauses
+        if related_wheres = conditions.related_wheres[key]
+          _appendWhere(query, related_wheres, related_model._table)
 
+      # Compile the columns for this model and prefix them with its table name
+      from_columns = @_prefixColumns(@model_type, $fields)
       query.select(from_columns.concat(to_columns))
 
     else
-      query.select($fields if $fields)
+      #todo: do these make sense with joins? apply them after un-joining the result?
       query.limit(1) if @_cursor.$one
       query.limit(@_cursor.$limit) if @_cursor.$limit
       query.offset(@_cursor.$offset) if @_cursor.$offset
+      # Apply the field selection if present and there's no joins required
+      query.select($fields if $fields) if _.isEmpty(conditions.related_wheres)
+
+    unless _.isEmpty(conditions.related_wheres)
+      # Skip any relations we've processed with $include
+      if @include_keys
+        conditions.related_wheres = _.omit(conditions.related_wheres, @include_keys)
+      else
+        @joined = true
+        query.select((@_prefixColumns(@model_type, $fields)))
+
+      # Join the related table and add the related where conditions, using the full table name, for each related query
+      for key, related_wheres of conditions.related_wheres
+        relation = @_getRelation(key)
+        @_joinTo(query, relation)
+        _appendWhere(query, related_wheres, relation.reverse_relation.model_type._table)
 
     _appendSort(query, @_cursor.$sort) if @_cursor.$sort
 
+    if @verbose
+      console.log '\n----------'
+      console.log query.toString()
+      console.log '----------'
     return query.exec (err, json) =>
+      return callback(err, if @_cursor.$count then 0 else if @_cursor.$one then null else []) if err
 
-      if @_cursor.$include
-        json = @parseInclude(json)
+      json = @_joinedResultsToJSON(json) if @joined
 
       return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
       @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
@@ -139,6 +163,7 @@ module.exports = class SqlCursor extends Cursor
           json = if $values.length then ((if item.hasOwnProperty(key) then item[key] else null) for item in json) else _.map(json, -> null)
         else
           json = (((item[key] for key in $values when item.hasOwnProperty(key))) for item in json)
+      # These are checked again in case we appended id to the field list, which was necessary for joins
       else if @_cursor.$select
         $select = if @_cursor.$white_list then _.intersection(@_cursor.$select, @_cursor.$white_list) else @_cursor.$select
         json = _.map(json, (item) => _.pick(item, $select))
@@ -155,38 +180,77 @@ module.exports = class SqlCursor extends Cursor
       else
         callback(null, json)
 
-  tablePrefix: (model_type) -> "_#{model_type._table}_"
+  _joinTo: (query, relation) ->
+    related_model = relation.reverse_relation.model_type
+    if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+      pivot_table = relation.join_table._table
+
+      # Join the from model to the pivot table
+      from_key = "#{@model_type._table}.id"
+      pivot_to_key = "#{pivot_table}.#{relation.foreign_key}"
+      query.join(pivot_table, from_key, '=', pivot_to_key)
+
+      # Then to the to model's table
+      pivot_from_key = "#{pivot_table}.#{relation.reverse_relation.foreign_key}"
+      to_key = "#{related_model._table}.id"
+      query.join(related_model._table, pivot_from_key, '=', to_key)
+    else
+      if relation.type is 'belongsTo'
+        from_key = "#{@model_type._table}.#{relation.foreign_key}"
+        to_key = "#{related_model._table}.id"
+      else
+        from_key = "#{@model_type._table}.id"
+        to_key = "#{related_model._table}.#{relation.foreign_key}"
+      query.join(related_model._table, from_key, '=', to_key)
 
   # Rows returned from a join query need to be un-merged into the correct json format
-  parseInclude: (raw_json) ->
+  _joinedResultsToJSON: (raw_json) ->
+    return raw_json unless raw_json and raw_json.length
+
     json = []
+    for row in raw_json
+      model_json = {}
+      row_relation_json = {}
 
-    for key in @include_keys
-      relation = @model_type.relation(key)
-      related_model = relation.reverse_relation.model_type
+      # Fields are prefixed with the table name of the model they belong to so we can test which the values are for
+      # and assign them to the correct object
+      for key, value of row
+        if match = @_prefixRegex(@model_type).exec(key)
+          model_json[match[1]] = value
+        else if @include_keys
+          for include_key in @include_keys
+            related_json = (row_relation_json[include_key] or= {})
+            related_model = @model_type.relation(include_key).reverse_relation.model_type
+            if match = @_prefixRegex(related_model).exec(key)
+              related_json[match[1]] = value
 
-      for row in raw_json
-        model_json = {}
-        related_json = {}
+      # If there was a hasMany relationship or multiple $includes we'll have multiple rows for each model
+      if found = _.find(json, (test) -> test.id is model_json.id)
+        model_json = found
+      # Add this model to the result if we haven't already
+      else
+        json.push(model_json)
 
-        # Fields are prefixed with the table name of the model they belong to so we can test which the values are for
-        for key, value of row
-          if match = new RegExp("^#{@tablePrefix(@model_type)}(.*)$").exec(key)
-            model_json[match[1]] = value
-          else if match = new RegExp("^#{@tablePrefix(related_model)}(.*)$").exec(key)
-            related_json[match[1]] = value
-
-        # If there was a hasMany relationship or multiple $includes we'll have multiple rows for each model
-        if found = _.find(json, (test) -> test.id is model_json.id)
-          model_json = found
-        # Add this model to the result if we haven't already
-        else
-          json.push(model_json)
-
-        if relation.type is 'hasMany'
-          model_json[relation.key] or= []
-          model_json[relation.key].push(related_json)
-        else
-          model_json[relation.key] = related_json
+      # Add relations to the model_json if included
+      for include_key, related_json of row_relation_json
+        unless _.isEmpty(related_json)
+          if @model_type.relation(include_key).type is 'hasMany'
+            model_json[include_key] or= []
+            model_json[include_key].push(related_json) unless _.find(model_json[include_key], (test) -> test.id is related_json.id)
+          else
+            model_json[include_key] = related_json
 
     return json
+
+  _prefixColumns: (model_type, fields) ->
+    columns = if fields then _.clone(fields) else model_type.schema().allColumns()
+    columns.push('id') unless 'id' in columns
+    return ("#{model_type._table}.#{col} as #{@_tablePrefix(model_type)}#{col}" for col in columns)
+
+  _tablePrefix: (model_type) -> "#{model_type._table}_"
+
+  _prefixRegex: (model_type) -> new RegExp("^#{@_tablePrefix(model_type)}(.*)$")
+
+  _getRelation: (key) ->
+    throw new Error("#{key} is not a relation of #{@model_type.model_name}") unless relation = @model_type.relation(key)
+    return relation
