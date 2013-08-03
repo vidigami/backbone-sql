@@ -64,9 +64,29 @@ module.exports = class SqlSync
   ###################################
   # Backbone ORM - Class Extensions
   ###################################
+  resetSchema: (options, callback) ->
+    create = =>
+      @model_type._connection.Schema.createTable(@model_type._table, (table) =>
+        console.log "creating table: #{@model_type._table}" if options.verbose
+
+        table.increments('id').primary()
+        for key, field of @model_type._fields
+          method = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
+          table[method](key).nullable()
+
+        for key, relation of @model_type._relations
+          if relation.type is 'belongsTo'
+            table.integer(relation.foreign_key).nullable()
+          else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+            # TODO: many to many join table creation
+            console.log 'todo: manytomany'
+      )
+
+    @model_type._connection.Schema.dropTableIfExists(@model_type._table).then(create).then(callback, callback)
+
   cursor: (query={}) -> return new SqlCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
 
-  #todo: query
+  # TODO: query
   destroy: (query, callback) ->
     builder = @connection(@model_type._table)
     builder.where('id', query) unless _.isObject(query)

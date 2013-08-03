@@ -16,7 +16,8 @@ _appendCondition = (conditions, key, value) ->
     if value.$in?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
 
   # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
-  else if mongo_op = _.find(_.keys(COMPARATORS), (test) -> value.hasOwnProperty(test))
+  else if mongo_op = _.find(_.keys(COMPARATORS), (test) -> _.isObject(value) and value.hasOwnProperty(test))
+    # TODO: should return an error for null on an operator unless it is $ne
     parameter = value[mongo_op]
     operator = COMPARATORS[mongo_op]
     conditions.where_conditionals.push({key: key, operator: operator, value: parameter})
@@ -52,9 +53,20 @@ _columnName = (col, table) -> if table then "#{table}.#{col}" else col
 
 _appendWhere = (query, conditions, table) ->
   for condition in conditions.wheres
-    query.where(_columnName(condition.key, table), condition.value)
+    if _.isNull(condition.value)
+      query.whereNull(_columnName(condition.key, table))
+    else
+      query.where(_columnName(condition.key, table), condition.value)
   for condition in conditions.where_conditionals
-    query.where(_columnName(condition.key, table), condition.operator, condition.value)
+    if _.isNull(condition.value)
+      query.whereNotNull(_columnName(condition.key, table))
+    else
+      if condition.operator is '!='
+        query.where ->
+          @where(_columnName(condition.key, table), condition.operator, condition.value).orWhereNull(_columnName(condition.key, table))
+      else
+        query.where(_columnName(condition.key, table), condition.operator, condition.value)
+
   for condition in conditions.where_ins
     query.whereIn(_columnName(condition.key, table), condition.value)
   return query
@@ -74,8 +86,10 @@ _appendSort = (query, sorts) ->
 
 module.exports = class SqlCursor extends Cursor
 
-  toJSON: (callback, count) ->
+  toJSON: (callback, options) ->
     schema = @model_type.schema()
+    count = (@_cursor.$count or (options and options.$count))
+    exists = @_cursor.$exists or (options and options.$exists)
 
     query = @connection(@model_type._table)
     conditions = _parseConditions(@_find, @_cursor)
@@ -85,7 +99,7 @@ module.exports = class SqlCursor extends Cursor
 
     _appendWhere(query, conditions)
 
-    if count or @_cursor.$count
+    if count
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
 
     # only select specific fields
@@ -121,7 +135,7 @@ module.exports = class SqlCursor extends Cursor
       query.select(from_columns.concat(to_columns))
 
     else
-      #todo: do these make sense with joins? apply them after un-joining the result?
+      # TODO: do these make sense with joins? apply them after un-joining the result?
       query.limit(1) if @_cursor.$one
       query.limit(@_cursor.$limit) if @_cursor.$limit
       query.offset(@_cursor.$offset) if @_cursor.$offset
@@ -149,7 +163,8 @@ module.exports = class SqlCursor extends Cursor
       console.log query.toString()
       console.log '----------'
     return query.exec (err, json) =>
-      return callback(err, if @_cursor.$count then 0 else if @_cursor.$one then null else []) if err
+      return callback(err) if err
+      return callback(null, !!json.length) if exists # TODO: optimize to check without fetching data
 
       json = @_joinedResultsToJSON(json) if @joined
 
