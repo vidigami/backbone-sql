@@ -71,14 +71,15 @@ module.exports = class SqlSync
 
     @model_type._connection.Schema.dropTableIfExists(@model_type._table)
       .then(=> @model_type._connection.Schema.createTable @model_type._table, (table) =>
-        console.log "Creating table: #{@model_type._table}" if options.verbose
+        schema = @model_type.schema()
+        console.log "Creating table: #{@model_type._table} with fields: \'#{_.keys(schema.fields).join(', ')}\' and relations: \'#{_.keys(schema.relations).join(', ')}\'" if options.verbose
 
         table.increments('id').primary()
-        for key, field of @model_type._fields
+        for key, field of schema.fields
           method = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
           table[method](key).nullable()
 
-        for key, relation of @model_type._relations
+        for key, relation of schema.relations
           if relation.type is 'belongsTo'
             table.integer(relation.foreign_key).nullable()
           else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
@@ -107,9 +108,6 @@ module.exports = class SqlSync
 
 #    sequelize_timestamps = @schema.fields.created_at and @schema.fields.updated_at
     @model_type._table = url_parts.table
-    @model_type._relations = @schema.relations
-    @model_type._fields = @schema.fields
-
     @schema.initialize()
 
 module.exports = (model_type, cache) ->
