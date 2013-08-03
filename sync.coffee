@@ -69,29 +69,25 @@ module.exports = class SqlSync
   resetSchema: (options, callback) ->
     join_tables = []
 
-    _.delay((=>
-      @model_type._connection.Schema.dropTableIfExists(@model_type._table)
-        .then(=>
-          @model_type._connection.Schema.createTable(@model_type._table, (table) =>
-            # console.log "\nCreating table: #{@model_type._table}" if options.verbose
+    @model_type._connection.Schema.dropTableIfExists(@model_type._table)
+      .then(=> @model_type._connection.Schema.createTable @model_type._table, (table) =>
+        console.log "\nCreating table: #{@model_type._table}" if options.verbose
 
-            table.increments('id').primary()
-            for key, field of @model_type._fields
-              method = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
-              table[method](key).nullable()
+        table.increments('id').primary()
+        for key, field of @model_type._fields
+          method = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
+          table[method](key).nullable()
 
-            for key, relation of @model_type._relations
-              if relation.type is 'belongsTo'
-                table.integer(relation.foreign_key).nullable()
-              else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-                join_tables.push(WhenNodeFn.call((callback) -> Utils.createJoinTableModel(relation, relation.reverse_relation).resetSchema(callback)))
-            return
-          )
-        )
-        .then(When.all(join_tables))
-        .then(callback, callback)
-
-    ), 70) # TODO: remove and debug race condition
+        for key, relation of @model_type._relations
+          if relation.type is 'belongsTo'
+            table.integer(relation.foreign_key).nullable()
+          else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+            do (relation) ->
+              join_tables.push(WhenNodeFn.call((callback) -> Utils.createJoinTableModel(relation).resetSchema(callback)))
+        return
+      )
+      .then(-> When.all(join_tables))
+      .then((-> callback()), callback)
 
   cursor: (query={}) -> return new SqlCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
 

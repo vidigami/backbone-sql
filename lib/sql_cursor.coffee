@@ -138,16 +138,16 @@ module.exports = class SqlCursor extends Cursor
       to_columns = []
       for key in @include_keys
         relation = @_getRelation(key)
-        related_model = relation.reverse_relation.model_type
+        related_model_type = relation.reverse_relation.model_type
 
         # Compile the columns for the related model and prefix them with its table name
-        to_columns = to_columns.concat(@_prefixColumns(related_model))
+        to_columns = to_columns.concat(@_prefixColumns(related_model_type))
 
         @_joinTo(query, relation)
 
         # Use the full table name when adding the where clauses
         if related_wheres = conditions.related_wheres[key]
-          _appendWhere(query, related_wheres, related_model._table)
+          _appendWhere(query, related_wheres, related_model_type._table)
 
       # Compile the columns for this model and prefix them with its table name
       from_columns = @_prefixColumns(@model_type, $fields)
@@ -215,7 +215,7 @@ module.exports = class SqlCursor extends Cursor
         callback(null, json)
 
   _joinTo: (query, relation) ->
-    related_model = relation.reverse_relation.model_type
+    related_model_type = relation.reverse_relation.model_type
     if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
       pivot_table = relation.join_table._table
 
@@ -226,16 +226,16 @@ module.exports = class SqlCursor extends Cursor
 
       # Then to the to model's table
       pivot_from_key = "#{pivot_table}.#{relation.reverse_relation.foreign_key}"
-      to_key = "#{related_model._table}.id"
-      query.join(related_model._table, pivot_from_key, '=', to_key)
+      to_key = "#{related_model_type._table}.id"
+      query.join(related_model_type._table, pivot_from_key, '=', to_key)
     else
       if relation.type is 'belongsTo'
         from_key = "#{@model_type._table}.#{relation.foreign_key}"
-        to_key = "#{related_model._table}.id"
+        to_key = "#{related_model_type._table}.id"
       else
         from_key = "#{@model_type._table}.id"
-        to_key = "#{related_model._table}.#{relation.foreign_key}"
-      query.join(related_model._table, from_key, '=', to_key)
+        to_key = "#{related_model_type._table}.#{relation.foreign_key}"
+      query.join(related_model_type._table, from_key, '=', to_key)
 
   # Rows returned from a join query need to be un-merged into the correct json format
   _joinedResultsToJSON: (raw_json) ->
@@ -254,8 +254,8 @@ module.exports = class SqlCursor extends Cursor
         else if @include_keys
           for include_key in @include_keys
             related_json = (row_relation_json[include_key] or= {})
-            related_model = @model_type.relation(include_key).reverse_relation.model_type
-            if match = @_prefixRegex(related_model).exec(key)
+            related_model_type = @model_type.relation(include_key).reverse_relation.model_type
+            if match = @_prefixRegex(related_model_type).exec(key)
               related_json[match[1]] = value
 
       # If there was a hasMany relationship or multiple $includes we'll have multiple rows for each model

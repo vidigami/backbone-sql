@@ -1,8 +1,8 @@
 test_parameters =
   database_url: require('../config/database')['test']
   schema:
-    created_at: 'Date'
-    updated_at: 'Date'
+    created_at: 'DateTime'
+    updated_at: 'DateTime'
     name: ['String', indexed: true]
   sync: require('../../sync')
 
