@@ -1,5 +1,7 @@
 _ = require 'underscore'
 util = require 'util'
+When = require 'when'
+WhenNodeFn = require 'when/node/function'
 Queue = require 'queue-async'
 URL = require 'url'
 inflection = require 'inflection'
@@ -65,24 +67,31 @@ module.exports = class SqlSync
   # Backbone ORM - Class Extensions
   ###################################
   resetSchema: (options, callback) ->
-    create = =>
-      @model_type._connection.Schema.createTable(@model_type._table, (table) =>
-        console.log "creating table: #{@model_type._table}" if options.verbose
+    join_tables = []
 
-        table.increments('id').primary()
-        for key, field of @model_type._fields
-          method = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
-          table[method](key).nullable()
+    _.delay((=>
+      @model_type._connection.Schema.dropTableIfExists(@model_type._table)
+        .then(=>
+          @model_type._connection.Schema.createTable(@model_type._table, (table) =>
+            # console.log "\nCreating table: #{@model_type._table}" if options.verbose
 
-        for key, relation of @model_type._relations
-          if relation.type is 'belongsTo'
-            table.integer(relation.foreign_key).nullable()
-          else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-            # TODO: many to many join table creation
-            console.log 'todo: manytomany'
-      )
+            table.increments('id').primary()
+            for key, field of @model_type._fields
+              method = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
+              table[method](key).nullable()
 
-    @model_type._connection.Schema.dropTableIfExists(@model_type._table).then(create).then(callback, callback)
+            for key, relation of @model_type._relations
+              if relation.type is 'belongsTo'
+                table.integer(relation.foreign_key).nullable()
+              else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+                join_tables.push(WhenNodeFn.call((callback) -> Utils.createJoinTableModel(relation, relation.reverse_relation).resetSchema(callback)))
+            return
+          )
+        )
+        .then(When.all(join_tables))
+        .then(callback, callback)
+
+    ), 70) # TODO: remove and debug race condition
 
   cursor: (query={}) -> return new SqlCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
 
