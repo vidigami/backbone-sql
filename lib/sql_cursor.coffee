@@ -21,7 +21,7 @@ _appendCondition = (conditions, key, value) ->
     operations = []
     for mongo_op, parameter of mongo_ops
       # TODO: should return an error for null on an operator unless it is $ne, but there is no callback
-      throw new Error "Unexpected null with operator: #{operator}" if _.isNull(value) and (operator isnt '$ne')
+      throw new Error "Unexpected null with query key '#{key}' operator '#{operator}'" if _.isNull(value) and (operator isnt '$ne')
       operations.push({operator: COMPARATORS[mongo_op], value: parameter})
     if ops_length is 1
       conditions.where_conditionals.push(_.extend(operations[0], {key: key}))
@@ -36,7 +36,7 @@ _parseConditions = (find, cursor) ->
   conditions = {wheres: [], where_conditionals: [], where_ins: [], related_wheres: {}}
   related_wheres = {}
   for key, value of find
-    continue if _.isUndefined(value)
+    throw new Error "Unexpected undefined for query key '#{key}'" if _.isUndefined(value)
 
     # A dot indicates a condition on a related model
     if key.indexOf('.') > 0
@@ -108,13 +108,16 @@ module.exports = class SqlCursor extends Cursor
     count = (@_cursor.$count or (options and options.$count))
     exists = @_cursor.$exists or (options and options.$exists)
 
-    query = @connection(@model_type._table)
-    conditions = _parseConditions(@_find, @_cursor)
+    try
+      query = @connection(@model_type._table)
+      conditions = _parseConditions(@_find, @_cursor)
 
-    # $in : [] or another query that would result in an empty result set in mongo has been given
-    return callback(null, if @_cursor.$count then 0 else (if @_cursor.$one then null else [])) if conditions.abort
+      # $in : [] or another query that would result in an empty result set in mongo has been given
+      return callback(null, if @_cursor.$count then 0 else (if @_cursor.$one then null else [])) if conditions.abort
 
-    _appendWhere(query, conditions)
+      _appendWhere(query, conditions)
+    catch err
+      return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
 
     if count
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
