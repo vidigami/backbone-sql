@@ -39,9 +39,9 @@ module.exports = class SqlSync
         options.success?(json)
     # a model
     else
-      @cursor(model.get('id')).toJSON (err, json) ->
+      @cursor(model.id).toJSON (err, json) ->
         return options.error(err) if err
-        return options.error(new Error "Model not found. Id #{model.get('id')}") if not json
+        return options.error(new Error "Model not found. Id #{model.id}") if not json
         options.success?(json)
 
   create: (model, options) =>
@@ -54,12 +54,12 @@ module.exports = class SqlSync
 
   update: (model, options) =>
     json = model.toJSON()
-    @connection(@model_type._table).where('id', model.get('id')).update(json).exec (err, res) ->
+    @connection(@model_type._table).where('id', model.id).update(json).exec (err, res) ->
       return options.error(err) if err
       options.success?(res[0] if res.length)
 
   delete: (model, options) =>
-    @connection(@model_type._table).where('id', model.get('id')).del().exec (err, res) ->
+    @connection(@model_type._table).where('id', model.id).del().exec (err, res) ->
       return options.error(err) if err
       options.success?(model, {}, options)
 
