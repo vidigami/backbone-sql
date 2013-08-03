@@ -71,7 +71,7 @@ module.exports = class SqlSync
 
     @model_type._connection.Schema.dropTableIfExists(@model_type._table)
       .then(=> @model_type._connection.Schema.createTable @model_type._table, (table) =>
-        console.log "\nCreating table: #{@model_type._table}" if options.verbose
+        console.log "Creating table: #{@model_type._table}" if options.verbose
 
         table.increments('id').primary()
         for key, field of @model_type._fields
