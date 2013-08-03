@@ -183,7 +183,7 @@ module.exports = class SqlCursor extends Cursor
       console.log query.toString()
       console.log '----------'
     return query.exec (err, json) =>
-      return callback(err) if err
+      return callback(new Error("Query failed for model: #{@model_type.model_name} with error: #{err}")) if err
 
       json = @_joinedResultsToJSON(json) if @joined
 
