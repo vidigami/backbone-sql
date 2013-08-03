@@ -10,17 +10,23 @@ COMPARATORS =
   $gt: '>'
   $gte: '>='
   $ne: '!='
+COMPARATOR_KEYS = _.keys(COMPARATORS)
 
 _appendCondition = (conditions, key, value) ->
   if value?.$in
     if value.$in?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
 
   # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
-  else if mongo_op = _.find(_.keys(COMPARATORS), (test) -> _.isObject(value) and value.hasOwnProperty(test))
-    # TODO: should return an error for null on an operator unless it is $ne
-    parameter = value[mongo_op]
-    operator = COMPARATORS[mongo_op]
-    conditions.where_conditionals.push({key: key, operator: operator, value: parameter})
+  else if _.isObject(value) and ops_length = _.size(mongo_ops = _.pick(value, COMPARATOR_KEYS))
+    operations = []
+    for mongo_op, parameter of mongo_ops
+      # TODO: should return an error for null on an operator unless it is $ne, but there is no callback
+      throw new Error "Unexpected null with operator: #{operator}" if _.isNull(value) and (operator isnt '$ne')
+      operations.push({operator: COMPARATORS[mongo_op], value: parameter})
+    if ops_length is 1
+      conditions.where_conditionals.push(_.extend(operations[0], {key: key}))
+    else
+      conditions.where_conditionals.push({key: key, operations: operations})
 
   else
     conditions.wheres.push({key: key, value: value})
@@ -51,21 +57,32 @@ _parseConditions = (find, cursor) ->
 
 _columnName = (col, table) -> if table then "#{table}.#{col}" else col
 
+_appendConditionalWhere = (query, key, condition, table, compound) ->
+  if condition.operator is '!='
+    query[if compound then 'andWhere' else 'where'] ->
+      @where(_columnName(key, table), condition.operator, condition.value).orWhereNull(_columnName(key, table))
+  else
+    query[if compound then 'andWhere' else 'where'](_columnName(key, table), condition.operator, condition.value)
+
 _appendWhere = (query, conditions, table) ->
   for condition in conditions.wheres
     if _.isNull(condition.value)
       query.whereNull(_columnName(condition.key, table))
     else
       query.where(_columnName(condition.key, table), condition.value)
+
   for condition in conditions.where_conditionals
-    if _.isNull(condition.value)
+    if condition.operations
+      query.where ->
+        operation = condition.operations.pop()
+        nested_query = @
+        _appendConditionalWhere(nested_query, condition.key, operation, table, false)
+        for operation in condition.operations
+          _appendConditionalWhere(nested_query, condition.key, operation, table, true)
+    else if _.isNull(condition.value)
       query.whereNotNull(_columnName(condition.key, table))
     else
-      if condition.operator is '!='
-        query.where ->
-          @where(_columnName(condition.key, table), condition.operator, condition.value).orWhereNull(_columnName(condition.key, table))
-      else
-        query.where(_columnName(condition.key, table), condition.operator, condition.value)
+      _appendConditionalWhere(query, condition.key, condition, table, false)
 
   for condition in conditions.where_ins
     query.whereIn(_columnName(condition.key, table), condition.value)
@@ -95,12 +112,14 @@ module.exports = class SqlCursor extends Cursor
     conditions = _parseConditions(@_find, @_cursor)
 
     # $in : [] or another query that would result in an empty result set in mongo has been given
-    return callback(null, if @_cursor.$count then 0 else if @_cursor.$one then null else []) if conditions.abort
+    return callback(null, if @_cursor.$count then 0 else (if @_cursor.$one then null else [])) if conditions.abort
 
     _appendWhere(query, conditions)
 
     if count
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
+    if exists
+      return query.limit(1).exec (err, json) => return callback(err) if err; callback(null, !!json.length)
 
     # only select specific fields
     if @_cursor.$values
@@ -159,12 +178,12 @@ module.exports = class SqlCursor extends Cursor
     _appendSort(query, @_cursor.$sort) if @_cursor.$sort
 
     if @verbose
+    # if true
       console.log '\n----------'
       console.log query.toString()
       console.log '----------'
     return query.exec (err, json) =>
       return callback(err) if err
-      return callback(null, !!json.length) if exists # TODO: optimize to check without fetching data
 
       json = @_joinedResultsToJSON(json) if @joined
 
