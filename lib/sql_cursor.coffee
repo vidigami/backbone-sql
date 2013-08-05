@@ -104,8 +104,6 @@ _appendSort = (query, sorts) ->
 module.exports = class SqlCursor extends Cursor
 
   toJSON: (callback) ->
-    schema = @model_type.schema()
-
     try
       query = @connection(@model_type._table)
       conditions = _parseConditions(@_find, @_cursor)
@@ -148,6 +146,7 @@ module.exports = class SqlCursor extends Cursor
 
         # Use the full table name when adding the where clauses
         if related_wheres = conditions.related_wheres[key]
+          (@queued_queries or= []).push(key)
           _appendWhere(query, related_wheres, related_model_type._table)
 
       # Compile the columns for this model and prefix them with its table name
@@ -188,19 +187,48 @@ module.exports = class SqlCursor extends Cursor
 
       json = @_joinedResultsToJSON(json) if @joined
 
-      return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
-      @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
-      json = @selectResults(json)
-      if @hasCursorQuery('$page')
-        _appendWhere(@connection(@model_type._table), conditions).count('*').exec (err, count_json) =>
-          callback(null, {
-            offset: @_cursor.$offset
-            total_rows: if count_json.length then count_json[0].aggregate else 0
-            rows: json
-          })
+      if @queued_queries
+        @_appendCompleteRelations(json, callback)
       else
-        callback(null, json)
+        @_processResponse(json, callback)
 
+  # Process any remaining queries and return the json
+  _processResponse: (json, callback) ->
+    schema = @model_type.schema()
+    return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
+
+    @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
+    json = @selectResults(json)
+    if @hasCursorQuery('$page')
+      _appendWhere(@connection(@model_type._table), conditions).count('*').exec (err, count_json) =>
+        callback(null, {
+          offset: @_cursor.$offset
+          total_rows: if count_json.length then count_json[0].aggregate else 0
+          rows: json
+        })
+    else
+      callback(null, json)
+
+  # Make another query to get the complete set of related objects when they have been fitered by a where clause
+  _appendCompleteRelations: (json, callback) ->
+    new_query = @connection(@model_type._table)
+    new_query.whereIn(_columnName('id', @model_type._table), _.pluck(json, 'id'))
+    to_columns = []
+    for key in @queued_queries
+      relation = @_getRelation(key)
+      related_model_type = relation.reverse_relation.model_type
+      to_columns = to_columns.concat(@_prefixColumns(related_model_type))
+      @_joinTo(new_query, relation)
+
+    new_query.select((@_prefixColumns(@model_type, ['id'])).concat(to_columns))
+    new_query.exec (err, new_json) =>
+      relation_json = @_joinedResultsToJSON(new_json)
+      for placeholder in relation_json
+        model = _.find(json, (test) -> test.id is placeholder.id)
+        _.extend(model, placeholder)
+      @_processResponse(json, callback)
+
+  # Make another query to get the complete set of related objects when they have been fitered by a where clause
   _joinTo: (query, relation) ->
     related_model_type = relation.reverse_relation.model_type
     if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
