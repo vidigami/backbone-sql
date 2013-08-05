@@ -103,10 +103,8 @@ _appendSort = (query, sorts) ->
 
 module.exports = class SqlCursor extends Cursor
 
-  toJSON: (callback, options) ->
+  toJSON: (callback) ->
     schema = @model_type.schema()
-    count = (@_cursor.$count or (options and options.$count))
-    exists = @_cursor.$exists or (options and options.$exists)
 
     try
       query = @connection(@model_type._table)
@@ -119,9 +117,9 @@ module.exports = class SqlCursor extends Cursor
     catch err
       return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
 
-    if count
+    if @hasCursorQuery('$count')
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
-    if exists
+    if @hasCursorQuery('$exists')
       return query.limit(1).exec (err, json) => return callback(err) if err; callback(null, !!json.length)
 
     # only select specific fields
@@ -192,30 +190,14 @@ module.exports = class SqlCursor extends Cursor
 
       return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
       @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
-
-      if @_cursor.$values
-        $values = if @_cursor.$white_list then _.intersection(@_cursor.$values, @_cursor.$white_list) else @_cursor.$values
-        if @_cursor.$values.length is 1
-          key = @_cursor.$values[0]
-          json = if $values.length then ((if item.hasOwnProperty(key) then item[key] else null) for item in json) else _.map(json, -> null)
-        else
-          json = (((item[key] for key in $values when item.hasOwnProperty(key))) for item in json)
-
-      # These are checked again in case we appended id to the field list, which was necessary for joins
-      else if @_cursor.$select
-        $select = if @_cursor.$white_list then _.intersection(@_cursor.$select, @_cursor.$white_list) else @_cursor.$select
-        json = _.map(json, (item) => _.pick(item, $select))
-
-      else if @_cursor.$white_list
-        json = _.map(json, (item) => _.pick(item, @_cursor.$white_list))
-
-      if @_cursor.$page or @_cursor.$page is ''
+      json = @selectResults(json)
+      if @hasCursorQuery('$page')
         _appendWhere(@connection(@model_type._table), conditions).count('*').exec (err, count_json) =>
-          json =
+          callback(null, {
             offset: @_cursor.$offset
             total_rows: if count_json.length then count_json[0].aggregate else 0
             rows: json
-          callback(null, json)
+          })
       else
         callback(null, json)
 
