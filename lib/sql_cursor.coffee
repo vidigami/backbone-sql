@@ -120,7 +120,7 @@ module.exports = class SqlCursor extends Cursor
     if @hasCursorQuery('$count')
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
     if @hasCursorQuery('$exists')
-      return query.limit(1).exec (err, json) => return callback(err) if err; callback(null, !!json.length)
+      return query.count(1).exec (err, json) => callback(null, if json.length then !!json[0].aggregate else false)
 
     # only select specific fields
     if @_cursor.$values
