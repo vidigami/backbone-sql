@@ -106,12 +106,12 @@ module.exports = class SqlCursor extends Cursor
   toJSON: (callback) ->
     try
       query = @connection(@model_type._table)
-      conditions = _parseConditions(@_find, @_cursor)
+      @_conditions = _parseConditions(@_find, @_cursor)
 
       # $in : [] or another query that would result in an empty result set in mongo has been given
-      return callback(null, if @_cursor.$count then 0 else (if @_cursor.$one then null else [])) if conditions.abort
+      return callback(null, if @_cursor.$count then 0 else (if @_cursor.$one then null else [])) if @_conditions.abort
 
-      _appendWhere(query, conditions)
+      _appendWhere(query, @_conditions)
     catch err
       return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
 
@@ -145,7 +145,7 @@ module.exports = class SqlCursor extends Cursor
         @_joinTo(query, relation)
 
         # Use the full table name when adding the where clauses
-        if related_wheres = conditions.related_wheres[key]
+        if related_wheres = @_conditions.related_wheres[key]
           (@queued_queries or= []).push(key)
           _appendWhere(query, related_wheres, related_model_type._table)
 
@@ -159,18 +159,18 @@ module.exports = class SqlCursor extends Cursor
       query.limit(@_cursor.$limit) if @_cursor.$limit
       query.offset(@_cursor.$offset) if @_cursor.$offset
       # Apply the field selection if present and there's no joins required
-      query.select($fields if $fields) if _.isEmpty(conditions.related_wheres)
+      query.select($fields if $fields) if _.isEmpty(@_conditions.related_wheres)
 
-    unless _.isEmpty(conditions.related_wheres)
+    unless _.isEmpty(@_conditions.related_wheres)
       # Skip any relations we've processed with $include
       if @include_keys
-        conditions.related_wheres = _.omit(conditions.related_wheres, @include_keys)
+        @_conditions.related_wheres = _.omit(@_conditions.related_wheres, @include_keys)
       else
         @joined = true
         query.select((@_prefixColumns(@model_type, $fields)))
 
       # Join the related table and add the related where conditions, using the full table name, for each related query
-      for key, related_wheres of conditions.related_wheres
+      for key, related_wheres of @_conditions.related_wheres
         relation = @_getRelation(key)
         @_joinTo(query, relation)
         _appendWhere(query, related_wheres, relation.reverse_relation.model_type._table)
@@ -200,7 +200,7 @@ module.exports = class SqlCursor extends Cursor
     @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
     json = @selectResults(json)
     if @hasCursorQuery('$page')
-      _appendWhere(@connection(@model_type._table), conditions).count('*').exec (err, count_json) =>
+      _appendWhere(@connection(@model_type._table), @_conditions).count('*').exec (err, count_json) =>
         callback(null, {
           offset: @_cursor.$offset
           total_rows: if count_json.length then count_json[0].aggregate else 0
