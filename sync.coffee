@@ -62,6 +62,7 @@ module.exports = class SqlSync
   resetSchema: (options, callback) ->
     join_tables = []
 
+    # TODO: connection should be obtained through a callback, not internal knowledge
     @model_type._connection.Schema.dropTableIfExists(@model_type._table)
       .then(=> @model_type._connection.Schema.createTable @model_type._table, (table) =>
         schema = @model_type.schema()
