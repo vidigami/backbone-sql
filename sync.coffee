@@ -32,17 +32,10 @@ module.exports = class SqlSync
   # Classic Backbone Sync
   ###################################
   read: (model, options) ->
-    # a collection
-    if model.models
-      @cursor().toJSON (err, json) ->
-        return options.error(err) if err
-        options.success?(json)
-    # a model
-    else
-      @cursor(model.id).toJSON (err, json) ->
-        return options.error(err) if err
-        return options.error(new Error "Model not found. Id #{model.id}") if not json
-        options.success?(json)
+    @cursor(model.id).toJSON (err, json) ->
+      return options.error(err) if err
+      return options.error(new Error "Model not found. Id #{model.id}") if not json
+      options.success?(json)
 
   create: (model, options) =>
     json = model.toJSON()
@@ -56,12 +49,12 @@ module.exports = class SqlSync
     json = model.toJSON()
     @connection(@model_type._table).where('id', model.id).update(json).exec (err, res) ->
       return options.error(err) if err
-      options.success?(res[0] if res.length)
+      options.success?(json)
 
   delete: (model, options) =>
     @connection(@model_type._table).where('id', model.id).del().exec (err, res) ->
       return options.error(err) if err
-      options.success?(model, {}, options)
+      options.success?()
 
   ###################################
   # Backbone ORM - Class Extensions
@@ -110,7 +103,7 @@ module.exports = class SqlSync
     @model_type._table = url_parts.table
     @schema.initialize()
 
-module.exports = (model_type, cache) ->
+module.exports = (model_type) ->
   sync = new SqlSync(model_type)
 
   model_type::sync = sync_fn = (method, model, options={}) -> # save for access by model extensions
@@ -121,4 +114,4 @@ module.exports = (model_type, cache) ->
     if sync[method] then sync[method].apply(sync, Array::slice.call(arguments, 1)) else return undefined
 
   require('backbone-orm/lib/model_extensions')(model_type) # mixin extensions
-  return if cache then require('backbone-orm/lib/cache_sync')(model_type, sync_fn) else sync_fn
+  return require('backbone-orm/lib/cache').configureSync(model_type, sync_fn)
