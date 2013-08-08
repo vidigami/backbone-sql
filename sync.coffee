@@ -48,12 +48,7 @@ module.exports = class SqlSync
       options.success(json)
 
   update: (model, options) =>
-    if model.id is 2
-      console.log "UPDATE: #{util.inspect(model)} #{model.toJSON}"
-      json = model.toJSON({verbose: true})
-    else
-      json = model.toJSON()
-
+    json = model.toJSON()
     @connection(@model_type._table).where('id', model.id).update(json).exec (err, res) ->
       return options.error(model, err) if err
       options.success(json)
