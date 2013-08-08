@@ -14,18 +14,20 @@ SqlCursor = require './lib/sql_cursor'
 module.exports = class SqlSync
 
   constructor: (@model_type, options={}) ->
+    # set up model name
+    unless @model_type.model_name # model_name can be manually set
+      throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
+      @model_type.model_name = Utils.parseUrl(url).model_name
+    throw new Error('Missing model_name for model') unless @model_type.model_name
+
     @schema = new Schema(@model_type)
     @backbone_adapter = require './lib/sql_backbone_adapter'
 
   initialize: ->
     return if @is_initialized; @is_initialized = true
 
+    @schema.initialize()
     throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
-
-    # publish methods and sync on model
-    @model_type.model_name = Utils.parseUrl(url).model_name unless @model_type.model_name # model_name can be manually set
-    throw new Error('Missing model_name for model') unless @model_type.model_name
-
     @connect(url)
 
   ###################################
@@ -33,28 +35,33 @@ module.exports = class SqlSync
   ###################################
   read: (model, options) ->
     @cursor(model.id).toJSON (err, json) ->
-      return options.error(err) if err
+      return options.error(model, err) if err
       return options.error(new Error "Model not found. Id #{model.id}") if not json
-      options.success?(json)
+      options.success(json)
 
   create: (model, options) =>
     json = model.toJSON()
     @connection(@model_type._table).insert(json).exec (err, res) =>
-      return options.error(err) if err
+      return options.error(model, err) if err
       return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless res?.length
       json.id = res[0]
-      options.success?(json)
+      options.success(json)
 
   update: (model, options) =>
-    json = model.toJSON()
+    if model.id is 2
+      console.log "UPDATE: #{util.inspect(model)} #{model.toJSON}"
+      json = model.toJSON({verbose: true})
+    else
+      json = model.toJSON()
+
     @connection(@model_type._table).where('id', model.id).update(json).exec (err, res) ->
-      return options.error(err) if err
-      options.success?(json)
+      return options.error(model, err) if err
+      options.success(json)
 
   delete: (model, options) =>
     @connection(@model_type._table).where('id', model.id).del().exec (err, res) ->
-      return options.error(err) if err
-      options.success?()
+      return options.error(model, err) if err
+      options.success()
 
   ###################################
   # Backbone ORM - Class Extensions
