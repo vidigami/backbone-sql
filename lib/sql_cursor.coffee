@@ -51,7 +51,7 @@ _parseConditions = (find, cursor) ->
 
   if cursor?.$ids
     (conditions.abort = true; return conditions) unless cursor.$ids.length
-    conditions.where_ins.push({key: id, value: cursor.$ids})
+    conditions.where_ins.push({key: 'id', value: cursor.$ids})
 
   return conditions
 
