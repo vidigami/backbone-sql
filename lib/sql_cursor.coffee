@@ -113,7 +113,7 @@ module.exports = class SqlCursor extends Cursor
 
       _appendWhere(query, @_conditions)
     catch err
-      return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
+      return callback("Query failed for model: #{@model_type.name} with error: #{err}")
 
     if @hasCursorQuery('$count')
       return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
@@ -183,7 +183,7 @@ module.exports = class SqlCursor extends Cursor
       console.log query.toString()
       console.log '----------'
     return query.exec (err, json) =>
-      return callback(new Error("Query failed for model: #{@model_type.model_name} with error: #{err}")) if err
+      return callback(new Error("Query failed for model: #{@model_type.name} with error: #{err}")) if err
 
       json = @_joinedResultsToJSON(json) if @joined
 
@@ -301,5 +301,5 @@ module.exports = class SqlCursor extends Cursor
   _prefixRegex: (model_type) -> new RegExp("^#{@_tablePrefix(model_type)}(.*)$")
 
   _getRelation: (key) ->
-    throw new Error("#{key} is not a relation of #{@model_type.model_name}") unless relation = @model_type.relation(key)
+    throw new Error("#{key} is not a relation of #{@model_type.name}") unless relation = @model_type.relation(key)
     return relation
