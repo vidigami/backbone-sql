@@ -31,10 +31,18 @@ module.exports = class SqlSync
   # Classic Backbone Sync
   ###################################
   read: (model, options) ->
-    @cursor(model.id).toJSON (err, json) ->
-      return options.error(model, err) if err
-      return options.error(new Error "Model not found. Id #{model.id}") if not json
-      options.success(json)
+    # a collection
+    if model.models
+      @cursor().toJSON (err, json) ->
+        return options.error(err) if err
+        return options.error(new Error 'Collection not fetched') if not json
+        options.success?(json)
+    # a model
+    else
+      @cursor(model.id).toJSON (err, json) ->
+        return options.error(model, err) if err
+        return options.error(new Error "Model not found. Id #{model.id}") if not json
+        options.success(json)
 
   create: (model, options) =>
     json = model.toJSON()
