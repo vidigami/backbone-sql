@@ -32,29 +32,6 @@ _appendCondition = (conditions, key, value) ->
     conditions.wheres.push({key: key, value: value})
   return conditions
 
-_parseConditions = (find, cursor) ->
-  conditions = {wheres: [], where_conditionals: [], where_ins: [], related_wheres: {}}
-  related_wheres = {}
-  for key, value of find
-    throw new Error "Unexpected undefined for query key '#{key}'" if _.isUndefined(value)
-
-    # A dot indicates a condition on a related model
-    if key.indexOf('.') > 0
-      [relation, key] = key.split('.')
-      related_wheres[relation] or= {}
-      related_wheres[relation][key] = value
-    else
-      _appendCondition(conditions, key, value)
-
-  # Parse conditions on related models in the same way
-  conditions.related_wheres[relation] = _parseConditions(related_conditions) for relation, related_conditions of related_wheres
-
-  if cursor?.$ids
-    (conditions.abort = true; return conditions) unless cursor.$ids.length
-    conditions.where_ins.push({key: 'id', value: cursor.$ids})
-
-  return conditions
-
 _columnName = (col, table) -> if table then "#{table}.#{col}" else col
 
 _appendConditionalWhere = (query, key, condition, table, compound) ->
@@ -103,10 +80,37 @@ _appendSort = (query, sorts) ->
 
 module.exports = class SqlCursor extends Cursor
 
+  _parseConditions: (find, cursor) ->
+    conditions = {wheres: [], where_conditionals: [], where_ins: [], related_wheres: {}, joined_wheres: {}}
+    related_wheres = {}
+    for key, value of find
+      throw new Error "Unexpected undefined for query key '#{key}'" if _.isUndefined(value)
+
+      # A dot indicates a condition on a related model
+      if key.indexOf('.') > 0
+        [relation, key] = key.split('.')
+        related_wheres[relation] or= {}
+        related_wheres[relation][key] = value
+      else if (reverse_relation = @model_type.reverseRelation(key)) and reverse_relation.join_table
+        relation = reverse_relation.reverse_relation
+        conditions.joined_wheres[relation.key] or= {wheres: [], where_conditionals: [], where_ins: []}
+        _appendCondition(conditions.joined_wheres[relation.key], key, value)
+      else
+        _appendCondition(conditions, key, value)
+
+    # Parse conditions on related models in the same way
+    conditions.related_wheres[relation] = @_parseConditions(related_conditions) for relation, related_conditions of related_wheres
+
+    if cursor?.$ids
+      (conditions.abort = true; return conditions) unless cursor.$ids.length
+      conditions.where_ins.push({key: 'id', value: cursor.$ids})
+
+    return conditions
+
   toJSON: (callback) ->
     try
       query = @connection(@model_type._table)
-      @_conditions = _parseConditions(@_find, @_cursor)
+      @_conditions = @_parseConditions(@_find, @_cursor)
 
       # $in : [] or another query that would result in an empty result set in mongo has been given
       return callback(null, if @_cursor.$count then 0 else (if @_cursor.$one then null else [])) if @_conditions.abort
@@ -151,23 +155,20 @@ module.exports = class SqlCursor extends Cursor
 
       # Compile the columns for this model and prefix them with its table name
       from_columns = @_prefixColumns(@model_type, $fields)
-      query.select(from_columns.concat(to_columns))
+      $columns = from_columns.concat(to_columns)
 
     else
       # TODO: do these make sense with joins? apply them after un-joining the result?
       query.limit(1) if @_cursor.$one
       query.limit(@_cursor.$limit) if @_cursor.$limit
       query.offset(@_cursor.$offset) if @_cursor.$offset
-      # Apply the field selection if present and there's no joins required
-      query.select($fields if $fields) if _.isEmpty(@_conditions.related_wheres)
 
+    # Append where conditions and join if needed for the form `related_model.field = value`
     unless _.isEmpty(@_conditions.related_wheres)
+      @joined = true
       # Skip any relations we've processed with $include
       if @include_keys
         @_conditions.related_wheres = _.omit(@_conditions.related_wheres, @include_keys)
-      else
-        @joined = true
-        query.select((@_prefixColumns(@model_type, $fields)))
 
       # Join the related table and add the related where conditions, using the full table name, for each related query
       for key, related_wheres of @_conditions.related_wheres
@@ -175,10 +176,24 @@ module.exports = class SqlCursor extends Cursor
         @_joinTo(query, relation)
         _appendWhere(query, related_wheres, relation.reverse_relation.model_type._table)
 
+    # Append where conditions and join if needed for the form `manytomanyrelation_id.field = value`
+    unless _.isEmpty(@_conditions.joined_wheres)
+      @joined = true
+      # Ensure that a join with the join table occurs and add the where clause for the foreign key
+      for key, joined_wheres of @_conditions.joined_wheres
+        relation = @_getRelation(key)
+        unless key in _.keys(@_conditions.related_wheres) or (@include_keys and key in @include_keys)
+          from_key = "#{@model_type._table}.id"
+          to_key = "#{relation.join_table._table}.#{relation.foreign_key}"
+          query.join(relation.join_table._table, from_key, '=', to_key)
+        _appendWhere(query, joined_wheres, relation.join_table._table)
+
+    $columns or= if @joined then @_prefixColumns(@model_type, $fields) else $fields
+    query.select($columns)
     _appendSort(query, @_cursor.$sort) if @_cursor.$sort
 
     if @verbose
-    # if true
+#    if true
       console.log '\n----------'
       console.log query.toString()
       console.log '----------'
