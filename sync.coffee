@@ -1,10 +1,12 @@
-_ = require 'underscore'
 util = require 'util'
-When = require 'when'
-WhenNodeFn = require 'when/node/function'
-Queue = require 'queue-async'
+_ = require 'underscore'
+Backbone = require 'backbone'
 URL = require 'url'
 inflection = require 'inflection'
+Queue = require 'queue-async'
+
+When = require 'when'
+WhenNodeFn = require 'when/node/function'
 
 Schema = require 'backbone-orm/lib/schema'
 Utils = require 'backbone-orm/lib/utils'
@@ -101,15 +103,18 @@ module.exports = class SqlSync
     @model_type._table = url_parts.table
     @schema.initialize()
 
-module.exports = (model_type) ->
-  sync = new SqlSync(model_type)
+module.exports = (type) ->
+  if (new type()) instanceof Backbone.Collection # collection
+    model_type = Utils.configureCollectionModelType(type, module.exports)
+    return type::sync = model_type::sync
 
-  model_type::sync = sync_fn = (method, model, options={}) -> # save for access by model extensions
+  sync = new SqlSync(type)
+  type::sync = sync_fn = (method, model, options={}) -> # save for access by model extensions
     sync.initialize()
     return module.exports.apply(null, Array::slice.call(arguments, 1)) if method is 'createSync' # create a new sync
     return sync if method is 'sync'
     return sync.schema if method is 'schema'
     return if sync[method] then sync[method].apply(sync, Array::slice.call(arguments, 1)) else undefined
 
-  require('backbone-orm/lib/model_extensions')(model_type) # mixin extensions
-  return require('backbone-orm/lib/cache').configureSync(model_type, sync_fn)
+  require('backbone-orm/lib/model_extensions')(type) # mixin extensions
+  return require('backbone-orm/lib/cache').configureSync(type, sync_fn)
