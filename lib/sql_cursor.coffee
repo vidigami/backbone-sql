@@ -91,6 +91,7 @@ module.exports = class SqlCursor extends Cursor
         [relation, key] = key.split('.')
         related_wheres[relation] or= {}
         related_wheres[relation][key] = value
+      # Many to Many relationships may be queried on the foreign key of the join table
       else if (reverse_relation = @model_type.reverseRelation(key)) and reverse_relation.join_table
         relation = reverse_relation.reverse_relation
         conditions.joined_wheres[relation.key] or= {wheres: [], where_conditionals: [], where_ins: []}
@@ -298,6 +299,8 @@ module.exports = class SqlCursor extends Cursor
       # Add relations to the model_json if included
       for include_key, related_json of row_relation_json
         unless _.isEmpty(related_json)
+          reverse_relation_schema = @model_type.relation(include_key).reverse_relation.model_type.schema()
+          related_json = @backbone_adapter.nativeToAttributes(related_json, reverse_relation_schema)
           if @model_type.relation(include_key).type is 'hasMany'
             model_json[include_key] or= []
             model_json[include_key].push(related_json) unless _.find(model_json[include_key], (test) -> test.id is related_json.id)
