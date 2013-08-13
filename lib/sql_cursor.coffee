@@ -110,7 +110,7 @@ module.exports = class SqlCursor extends Cursor
 
   toJSON: (callback) ->
     try
-      query = @connection(@model_type._table)
+      query = @connection(@model_type.tableName())
       @_conditions = @_parseConditions(@_find, @_cursor)
 
       # $in : [] or another query that would result in an empty result set in mongo has been given
@@ -152,7 +152,7 @@ module.exports = class SqlCursor extends Cursor
         # Use the full table name when adding the where clauses
         if related_wheres = @_conditions.related_wheres[key]
           (@queued_queries or= []).push(key)
-          _appendWhere(query, related_wheres, related_model_type._table)
+          _appendWhere(query, related_wheres, related_model_type.tableName())
 
       # Compile the columns for this model and prefix them with its table name
       from_columns = @_prefixColumns(@model_type, $fields)
@@ -175,7 +175,7 @@ module.exports = class SqlCursor extends Cursor
       for key, related_wheres of @_conditions.related_wheres
         relation = @_getRelation(key)
         @_joinTo(query, relation)
-        _appendWhere(query, related_wheres, relation.reverse_relation.model_type._table)
+        _appendWhere(query, related_wheres, relation.reverse_relation.model_type.tableName())
 
     # Append where conditions and join if needed for the form `manytomanyrelation_id.field = value`
     unless _.isEmpty(@_conditions.joined_wheres)
@@ -184,10 +184,10 @@ module.exports = class SqlCursor extends Cursor
       for key, joined_wheres of @_conditions.joined_wheres
         relation = @_getRelation(key)
         unless key in _.keys(@_conditions.related_wheres) or (@include_keys and key in @include_keys)
-          from_key = "#{@model_type._table}.id"
-          to_key = "#{relation.join_table._table}.#{relation.foreign_key}"
-          query.join(relation.join_table._table, from_key, '=', to_key)
-        _appendWhere(query, joined_wheres, relation.join_table._table)
+          from_key = "#{@model_type.tableName()}.id"
+          to_key = "#{relation.join_table.tableName()}.#{relation.foreign_key}"
+          query.join(relation.join_table.tableName(), from_key, '=', to_key)
+        _appendWhere(query, joined_wheres, relation.join_table.tableName())
 
     $columns or= if @joined then @_prefixColumns(@model_type, $fields) else $fields
     query.select($columns)
@@ -216,7 +216,7 @@ module.exports = class SqlCursor extends Cursor
     @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
     json = @selectResults(json)
     if @hasCursorQuery('$page')
-      _appendWhere(@connection(@model_type._table), @_conditions).count('*').exec (err, count_json) =>
+      _appendWhere(@connection(@model_type.tableName()), @_conditions).count('*').exec (err, count_json) =>
         callback(null, {
           offset: @_cursor.$offset
           total_rows: if count_json.length then count_json[0].aggregate else 0
@@ -227,8 +227,8 @@ module.exports = class SqlCursor extends Cursor
 
   # Make another query to get the complete set of related objects when they have been fitered by a where clause
   _appendCompleteRelations: (json, callback) ->
-    new_query = @connection(@model_type._table)
-    new_query.whereIn(_columnName('id', @model_type._table), _.pluck(json, 'id'))
+    new_query = @connection(@model_type.tableName())
+    new_query.whereIn(_columnName('id', @model_type.tableName()), _.pluck(json, 'id'))
     to_columns = []
     for key in @queued_queries
       relation = @_getRelation(key)
@@ -248,25 +248,25 @@ module.exports = class SqlCursor extends Cursor
   _joinTo: (query, relation) ->
     related_model_type = relation.reverse_relation.model_type
     if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-      pivot_table = relation.join_table._table
+      pivot_table = relation.join_table.tableName()
 
       # Join the from model to the pivot table
-      from_key = "#{@model_type._table}.id"
+      from_key = "#{@model_type.tableName()}.id"
       pivot_to_key = "#{pivot_table}.#{relation.foreign_key}"
       query.join(pivot_table, from_key, '=', pivot_to_key)
 
       # Then to the to model's table
       pivot_from_key = "#{pivot_table}.#{relation.reverse_relation.foreign_key}"
-      to_key = "#{related_model_type._table}.id"
-      query.join(related_model_type._table, pivot_from_key, '=', to_key)
+      to_key = "#{related_model_type.tableName()}.id"
+      query.join(related_model_type.tableName(), pivot_from_key, '=', to_key)
     else
       if relation.type is 'belongsTo'
-        from_key = "#{@model_type._table}.#{relation.foreign_key}"
-        to_key = "#{related_model_type._table}.id"
+        from_key = "#{@model_type.tableName()}.#{relation.foreign_key}"
+        to_key = "#{related_model_type.tableName()}.id"
       else
-        from_key = "#{@model_type._table}.id"
-        to_key = "#{related_model_type._table}.#{relation.foreign_key}"
-      query.join(related_model_type._table, from_key, '=', to_key)
+        from_key = "#{@model_type.tableName()}.id"
+        to_key = "#{related_model_type.tableName()}.#{relation.foreign_key}"
+      query.join(related_model_type.tableName(), from_key, '=', to_key)
 
   # Rows returned from a join query need to be un-merged into the correct json format
   _joinedResultsToJSON: (raw_json) ->
@@ -312,9 +312,9 @@ module.exports = class SqlCursor extends Cursor
   _prefixColumns: (model_type, fields) ->
     columns = if fields then _.clone(fields) else model_type.schema().allColumns()
     columns.push('id') unless 'id' in columns
-    return ("#{model_type._table}.#{col} as #{@_tablePrefix(model_type)}#{col}" for col in columns)
+    return ("#{model_type.tableName()}.#{col} as #{@_tablePrefix(model_type)}#{col}" for col in columns)
 
-  _tablePrefix: (model_type) -> "#{model_type._table}_"
+  _tablePrefix: (model_type) -> "#{model_type.tableName()}_"
 
   _prefixRegex: (model_type) -> new RegExp("^#{@_tablePrefix(model_type)}(.*)$")
 

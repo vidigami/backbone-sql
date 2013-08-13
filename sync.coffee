@@ -46,7 +46,7 @@ module.exports = class SqlSync
 
   create: (model, options) =>
     json = model.toJSON()
-    @connection(@model_type._table).insert(json).exec (err, res) =>
+    @connection(@table).insert(json).exec (err, res) =>
       return options.error(model, err) if err
       return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless res?.length
       json.id = res[0]
@@ -54,12 +54,12 @@ module.exports = class SqlSync
 
   update: (model, options) =>
     json = model.toJSON()
-    @connection(@model_type._table).where('id', model.id).update(json).exec (err, res) ->
+    @connection(@table).where('id', model.id).update(json).exec (err, res) ->
       return options.error(model, err) if err
       options.success(json)
 
   delete: (model, options) =>
-    @connection(@model_type._table).where('id', model.id).del().exec (err, res) ->
+    @connection(@table).where('id', model.id).del().exec (err, res) ->
       return options.error(model, err) if err
       options.success()
 
@@ -70,10 +70,10 @@ module.exports = class SqlSync
     join_tables = []
 
     # TODO: connection should be obtained through a callback, not internal knowledge
-    @model_type._connection.Schema.dropTableIfExists(@model_type._table)
-      .then(=> @model_type._connection.Schema.createTable @model_type._table, (table) =>
+    @model_type._connection.Schema.dropTableIfExists(@table)
+      .then(=> @model_type._connection.Schema.createTable @table, (table) =>
         schema = @model_type.schema()
-        console.log "Creating table: #{@model_type._table} with fields: \'#{_.keys(schema.fields).join(', ')}\' and relations: \'#{_.keys(schema.relations).join(', ')}\'" if options.verbose
+        console.log "Creating table: #{@table} with fields: \'#{_.keys(schema.fields).join(', ')}\' and relations: \'#{_.keys(schema.relations).join(', ')}\'" if options.verbose
 
         table.increments('id').primary()
         for key, field of schema.fields
@@ -95,7 +95,7 @@ module.exports = class SqlSync
 
   # TODO: query
   destroy: (query, callback) ->
-    builder = @connection(@model_type._table)
+    builder = @connection(@table)
     builder.where('id', query) unless _.isObject(query)
     builder.del().exec callback
 
@@ -108,7 +108,7 @@ module.exports = class SqlSync
     @model_type._connection = @connection = require('./lib/knex_connection').get(url_parts)
 
 #    sequelize_timestamps = @schema.fields.created_at and @schema.fields.updated_at
-    @model_type._table = url_parts.table
+    @table = url_parts.table
     @schema.initialize()
 
 module.exports = (type) ->
@@ -123,6 +123,7 @@ module.exports = (type) ->
     return sync if method is 'sync'
     return sync.schema if method is 'schema'
     return false if method is 'isRemote'
+    return sync.table if method is 'tableName'
     return if sync[method] then sync[method].apply(sync, Array::slice.call(arguments, 1)) else undefined
 
   require('backbone-orm/lib/model_extensions')(type) # mixin extensions
