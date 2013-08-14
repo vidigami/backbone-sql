@@ -85,7 +85,7 @@ module.exports = class SqlSync
             table.integer(relation.foreign_key).nullable()
           else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
             do (relation) ->
-              join_tables.push(WhenNodeFn.call((callback) -> Utils.findOrGenerateJoinTable(relation).resetSchema(callback)))
+              join_tables.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
         return
       )
       .then(-> When.all(join_tables))
@@ -122,6 +122,7 @@ module.exports = (type) ->
     return module.exports.apply(null, Array::slice.call(arguments, 1)) if method is 'createSync' # create a new sync
     return sync if method is 'sync'
     return sync.schema if method is 'schema'
+    return false if method is 'isRemote'
     return sync.table if method is 'tableName'
     return if sync[method] then sync[method].apply(sync, Array::slice.call(arguments, 1)) else undefined
 
