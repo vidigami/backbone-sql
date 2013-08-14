@@ -116,7 +116,7 @@ module.exports = class SqlCursor extends Cursor
       # $in : [] or another query that would result in an empty result set in mongo has been given
       return callback(null, if @_cursor.$count then 0 else (if @_cursor.$one then null else [])) if @_conditions.abort
 
-      _appendWhere(query, @_conditions)
+      _appendWhere(query, @_conditions, @model_type.tableName())
     catch err
       return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
 
