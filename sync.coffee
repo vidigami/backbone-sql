@@ -8,10 +8,12 @@ Queue = require 'queue-async'
 When = require 'when'
 WhenNodeFn = require 'when/node/function'
 
+SqlCursor = require './lib/sql_cursor'
 Schema = require 'backbone-orm/lib/schema'
 Utils = require 'backbone-orm/lib/utils'
+bbCallback = Utils.bbCallback
 
-SqlCursor = require './lib/sql_cursor'
+DESTROY_BATCH_LIMIT = 1000
 
 module.exports = class SqlSync
 
@@ -95,9 +97,10 @@ module.exports = class SqlSync
 
   # TODO: query
   destroy: (query, callback) ->
-    builder = @connection(@table)
-    builder.where('id', query) unless _.isObject(query)
-    builder.del().exec callback
+    @model_type.batch query, {$limit: DESTROY_BATCH_LIMIT, method: 'toJSON'}, callback, (model_json, callback) =>
+      Utils.destroyRelationsByJSON @model_type, model_json, (err) =>
+        return callback(err) if err
+        @connection(@table).where('id', model_json.id).del().exec (err) => callback(err)
 
   ###################################
   # Backbone SQL Sync - Custom Extensions
