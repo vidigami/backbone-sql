@@ -85,7 +85,7 @@ module.exports = class SqlSync
             table.integer(relation.foreign_key).nullable()
           else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
             do (relation) ->
-              join_tables.push(WhenNodeFn.call((callback) -> Utils.findOrGenerateJoinTable(relation).resetSchema(callback)))
+              join_tables.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
         return
       )
       .then(-> When.all(join_tables))
