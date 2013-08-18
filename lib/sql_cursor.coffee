@@ -121,10 +121,12 @@ module.exports = class SqlCursor extends Cursor
       return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
 
     # count and exists when there is not a join table
-    unless @_conditions.joined_wheres
+    if @hasCursorQuery('$count') or @hasCursorQuery('$exists')
+      @_appendRelatedWheres(query)
+      @_appendJoinedWheres(query)
       if @hasCursorQuery('$count')
         return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
-      if @hasCursorQuery('$exists')
+      else
         return query.count(1).exec (err, json) => callback(null, if json.length then !!json[0].aggregate else false)
 
     # only select specific fields
@@ -167,35 +169,10 @@ module.exports = class SqlCursor extends Cursor
       query.offset(@_cursor.$offset) if @_cursor.$offset
 
     # Append where conditions and join if needed for the form `related_model.field = value`
-    unless _.isEmpty(@_conditions.related_wheres)
-      @joined = true
-      # Skip any relations we've processed with $include
-      if @include_keys
-        @_conditions.related_wheres = _.omit(@_conditions.related_wheres, @include_keys)
-
-      # Join the related table and add the related where conditions, using the full table name, for each related query
-      for key, related_wheres of @_conditions.related_wheres
-        relation = @_getRelation(key)
-        @_joinTo(query, relation)
-        _appendWhere(query, related_wheres, relation.reverse_relation.model_type.tableName())
+    @_appendRelatedWheres(query)
 
     # Append where conditions and join if needed for the form `manytomanyrelation_id.field = value`
-    unless _.isEmpty(@_conditions.joined_wheres)
-      @joined = true
-      # Ensure that a join with the join table occurs and add the where clause for the foreign key
-      for key, joined_wheres of @_conditions.joined_wheres
-        relation = @_getRelation(key)
-        unless key in _.keys(@_conditions.related_wheres) or (@include_keys and key in @include_keys)
-          from_key = "#{@model_type.tableName()}.id"
-          to_key = "#{relation.join_table.tableName()}.#{relation.foreign_key}"
-          query.join(relation.join_table.tableName(), from_key, '=', to_key)
-        _appendWhere(query, joined_wheres, relation.join_table.tableName())
-
-    # count and exists when there is a join table
-    if @hasCursorQuery('$count')
-      return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
-    if @hasCursorQuery('$exists')
-      return query.count(1).exec (err, json) => callback(null, if json.length then !!json[0].aggregate else false)
+    @_appendJoinedWheres(query)
 
     $columns or= if @joined then @_prefixColumns(@model_type, $fields) else $fields
     query.select($columns)
@@ -251,6 +228,33 @@ module.exports = class SqlCursor extends Cursor
         model = _.find(json, (test) -> test.id is placeholder.id)
         _.extend(model, placeholder)
       @_processResponse(json, callback)
+
+  _appendRelatedWheres: (query) ->
+    return if _.isEmpty(@_conditions.related_wheres)
+
+    @joined = true
+    # Skip any relations we've processed with $include
+    if @include_keys
+      @_conditions.related_wheres = _.omit(@_conditions.related_wheres, @include_keys)
+
+    # Join the related table and add the related where conditions, using the full table name, for each related query
+    for key, related_wheres of @_conditions.related_wheres
+      relation = @_getRelation(key)
+      @_joinTo(query, relation)
+      _appendWhere(query, related_wheres, relation.reverse_relation.model_type.tableName())
+
+  _appendJoinedWheres: (query) ->
+    return if _.isEmpty(@_conditions.joined_wheres)
+
+    @joined = true
+    # Ensure that a join with the join table occurs and add the where clause for the foreign key
+    for key, joined_wheres of @_conditions.joined_wheres
+      relation = @_getRelation(key)
+      unless key in _.keys(@_conditions.related_wheres) or (@include_keys and key in @include_keys)
+        from_key = "#{@model_type.tableName()}.id"
+        to_key = "#{relation.join_table.tableName()}.#{relation.foreign_key}"
+        query.join(relation.join_table.tableName(), from_key, '=', to_key)
+      _appendWhere(query, joined_wheres, relation.join_table.tableName())
 
   # Make another query to get the complete set of related objects when they have been fitered by a where clause
   _joinTo: (query, relation) ->
