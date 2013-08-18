@@ -120,10 +120,12 @@ module.exports = class SqlCursor extends Cursor
     catch err
       return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
 
-    if @hasCursorQuery('$count')
-      return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
-    if @hasCursorQuery('$exists')
-      return query.count(1).exec (err, json) => callback(null, if json.length then !!json[0].aggregate else false)
+    # count and exists when there is not a join table
+    unless @_conditions.joined_wheres
+      if @hasCursorQuery('$count')
+        return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
+      if @hasCursorQuery('$exists')
+        return query.count(1).exec (err, json) => callback(null, if json.length then !!json[0].aggregate else false)
 
     # only select specific fields
     if @_cursor.$values
@@ -189,18 +191,24 @@ module.exports = class SqlCursor extends Cursor
           query.join(relation.join_table.tableName(), from_key, '=', to_key)
         _appendWhere(query, joined_wheres, relation.join_table.tableName())
 
+    # count and exists when there is a join table
+    if @hasCursorQuery('$count')
+      return query.count('*').exec (err, json) => callback(null, if json.length then json[0].aggregate else 0)
+    if @hasCursorQuery('$exists')
+      return query.count(1).exec (err, json) => callback(null, if json.length then !!json[0].aggregate else false)
+
     $columns or= if @joined then @_prefixColumns(@model_type, $fields) else $fields
     query.select($columns)
     _appendSort(query, @_cursor.$sort) if @_cursor.$sort
 
     if @verbose
-#    if true
+    # if true
       console.log '\n----------'
       console.log query.toString()
       console.log '----------'
+
     return query.exec (err, json) =>
       return callback(new Error("Query failed for model: #{@model_type.model_name} with error: #{err}")) if err
-
       json = @_joinedResultsToJSON(json) if @joined
 
       if @queued_queries
