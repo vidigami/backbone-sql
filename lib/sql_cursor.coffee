@@ -201,7 +201,11 @@ module.exports = class SqlCursor extends Cursor
     @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
     json = @selectResults(json)
     if @hasCursorQuery('$page')
-      _appendWhere(@connection(@model_type.tableName()), @_conditions).count('*').exec (err, count_json) =>
+      query = @connection(@model_type.tableName())
+      _appendWhere(query, @_conditions)
+      @_appendRelatedWheres(query)
+      @_appendJoinedWheres(query)
+      query.count('*').exec (err, count_json) =>
         callback(null, {
           offset: @_cursor.$offset
           total_rows: if count_json.length then count_json[0].aggregate else 0
