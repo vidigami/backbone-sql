@@ -200,6 +200,17 @@ module.exports = class SqlCursor extends Cursor
 
     @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
     json = @selectResults(json)
+
+    # NOTE: limit and offset would apply to the join table so do as post-process. TODO: optimize
+    if @_cursor.$include
+      if @_cursor.$offset
+        number = json.length - @_cursor.$offset
+        number = 0 if number < 0
+        json = if number then json.slice(@_cursor.$offset, @_cursor.$offset+number) else []
+
+      if @_cursor.$limit
+        json = json.splice(0, Math.min(json.length, @_cursor.$limit))
+
     if @hasCursorQuery('$page')
       query = @connection(@model_type.tableName())
       _appendWhere(query, @_conditions)
