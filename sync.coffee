@@ -83,6 +83,7 @@ module.exports = class SqlSync
           table[method](key).nullable()
 
         for key, relation of schema.relations
+          continue if relation.isVirtual() # skip virtual
           if relation.type is 'belongsTo'
             table.integer(relation.foreign_key).nullable()
           else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
