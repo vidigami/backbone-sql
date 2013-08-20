@@ -268,9 +268,10 @@ module.exports = class SqlCursor extends Cursor
       unless key in _.keys(@_conditions.related_wheres) or (@include_keys and key in @include_keys)
         from_key = "#{@model_type.tableName()}.id"
         to_key = "#{relation.join_table.tableName()}.#{relation.foreign_key}"
-        query.join(relation.join_table.tableName(), from_key, '=', to_key)
+        query.join(relation.join_table.tableName(), from_key, '=', to_key, 'left outer')
       _appendWhere(query, joined_wheres, relation.join_table.tableName())
 
+  # TODO: look at optimizing without left outer joins everywhere
   # Make another query to get the complete set of related objects when they have been fitered by a where clause
   _joinTo: (query, relation) ->
     related_model_type = relation.reverse_relation.model_type
@@ -280,12 +281,12 @@ module.exports = class SqlCursor extends Cursor
       # Join the from model to the pivot table
       from_key = "#{@model_type.tableName()}.id"
       pivot_to_key = "#{pivot_table}.#{relation.foreign_key}"
-      query.join(pivot_table, from_key, '=', pivot_to_key)
+      query.join(pivot_table, from_key, '=', pivot_to_key, 'left outer')
 
       # Then to the to model's table
       pivot_from_key = "#{pivot_table}.#{relation.reverse_relation.foreign_key}"
       to_key = "#{related_model_type.tableName()}.id"
-      query.join(related_model_type.tableName(), pivot_from_key, '=', to_key)
+      query.join(related_model_type.tableName(), pivot_from_key, '=', to_key, 'left outer')
     else
       if relation.type is 'belongsTo'
         from_key = "#{@model_type.tableName()}.#{relation.foreign_key}"
@@ -293,7 +294,7 @@ module.exports = class SqlCursor extends Cursor
       else
         from_key = "#{@model_type.tableName()}.id"
         to_key = "#{related_model_type.tableName()}.#{relation.foreign_key}"
-      query.join(related_model_type.tableName(), from_key, '=', to_key)
+      query.join(related_model_type.tableName(), from_key, '=', to_key, 'left outer')
 
   # Rows returned from a join query need to be un-merged into the correct json format
   _joinedResultsToJSON: (raw_json) ->
@@ -325,7 +326,9 @@ module.exports = class SqlCursor extends Cursor
 
       # Add relations to the model_json if included
       for include_key, related_json of row_relation_json
-        unless _.isEmpty(related_json)
+        if _.isNull(related_json.id)
+          model_json[include_key] = null
+        else if not _.isEmpty(related_json)
           reverse_relation_schema = @model_type.relation(include_key).reverse_relation.model_type.schema()
           related_json = @backbone_adapter.nativeToAttributes(related_json, reverse_relation_schema)
           if @model_type.relation(include_key).type is 'hasMany'
