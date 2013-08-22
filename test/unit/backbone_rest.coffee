@@ -1,10 +1,22 @@
+_ = require 'underscore'
+Queue = require 'queue-async'
+
+DATABASE_VARIANTS = ['postgres']
+# DATABASE_VARIANTS = ['mysql', 'postgres']
+
 module.exports = (options, callback) ->
   test_parameters =
-    database_url: require('../config/database')['test']
     schema:
       created_at: 'DateTime'
       updated_at: 'DateTime'
       name: ['String', indexed: true]
     sync: require('../../sync')
 
-  require('backbone-rest/test/generators/all')(test_parameters, callback)
+  queue = new Queue(1)
+  for variant in DATABASE_VARIANTS
+    do (variant) -> queue.defer (callback) ->
+      console.log "Running tests for variant: #{variant}"
+      variant_test_parameters = _.clone(test_parameters)
+      variant_test_parameters.database_url = require('../config/database')[variant]
+      require('backbone-rest/test/generators/all')(variant_test_parameters, callback)
+  queue.await callback
