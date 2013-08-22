@@ -13,9 +13,9 @@ module.exports =
     switch url_parts.protocol
       when 'mysql:'
         return connections[parameters.database_path] = Knex.Initialize(parameters.database_path, {client: 'mysql', connection: connection})
-      when 'postgres:'
+      when 'postgres:', 'pg:'
         return connections[parameters.database_path] = Knex.Initialize(parameters.database_path, {client: 'postgres', connection: connection})
-      when 'sqlite3:'
+      when 'sqlite:', 'sqlite3:'
         return connections[parameters.database_path] = Knex.Initialize(parameters.database_path, {client: 'sqlite3', connection: connection})
       else
         throw "Unrecognized sql variant: #{parameters.database_path} for protocol: #{url_parts.protocol}"

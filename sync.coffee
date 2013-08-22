@@ -48,7 +48,7 @@ module.exports = class SqlSync
 
   create: (model, options) =>
     json = model.toJSON()
-    @connection(@table).insert(json).exec (err, res) =>
+    @connection(@table).insert(json, 'id').exec (err, res) =>
       return options.error(err) if err
       return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless res?.length
       json.id = res[0]
