@@ -11,7 +11,7 @@ module.exports =
     connection = _.extend(_.pick(parameters, ['host', 'user', 'password', 'database']), {charset: 'utf8'})
     url_parts = URL.parse(parameters.database_path)
     switch url_parts.protocol
-      when 'mysql:'
+      when 'mysql:', 'mysql2:'
         return connections[parameters.database_path] = Knex.Initialize(parameters.database_path, {client: 'mysql', connection: connection})
       when 'postgres:', 'pg:'
         return connections[parameters.database_path] = Knex.Initialize(parameters.database_path, {client: 'postgres', connection: connection})
