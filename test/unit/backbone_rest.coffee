@@ -3,7 +3,8 @@ Queue = require 'queue-async'
 
 # DATABASE_VARIANTS = ['mysql']
 # DATABASE_VARIANTS = ['postgres']
-DATABASE_VARIANTS = ['mysql', 'postgres', 'sqlite3']
+DATABASE_VARIANTS = ['mysql', 'postgres']
+# DATABASE_VARIANTS = ['mysql', 'postgres', 'sqlite3']
 
 module.exports = (options, callback) ->
   test_parameters =
