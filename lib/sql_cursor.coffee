@@ -109,6 +109,8 @@ module.exports = class SqlCursor extends Cursor
     return conditions
 
   toJSON: (callback) ->
+    return callback(null, if @hasCursorQuery('$one') then null else []) if @hasCursorQuery('$zero')
+
     try
       query = @connection(@model_type.tableName())
       @_conditions = @_parseConditions(@_find, @_cursor)
