@@ -99,7 +99,7 @@ module.exports = class SqlSync
   # TODO: query
   destroy: (query, callback) ->
     @model_type.batch query, {$limit: DESTROY_BATCH_LIMIT, method: 'toJSON'}, callback, (model_json, callback) =>
-      Utils.destroyRelationsByJSON @model_type, model_json, (err) =>
+      Utils.patchRemoveByJSON @model_type, model_json, (err) =>
         return callback(err) if err
         @connection(@table).where('id', model_json.id).del().exec (err) => callback(err)
 
