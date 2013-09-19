@@ -80,12 +80,14 @@ module.exports = class SqlSync
         table.increments('id').primary()
         for key, field of schema.fields
           method = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
-          table[method](key).nullable()
+          col = table[method](key).nullable()
+          col.index() if field.indexed
+          col.unique() if field.unique
 
         for key, relation of schema.relations
           continue if relation.isVirtual() # skip virtual
           if relation.type is 'belongsTo'
-            table.integer(relation.foreign_key).nullable()
+            table.integer(relation.foreign_key).nullable().index()
           else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
             do (relation) ->
               join_tables.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
@@ -99,7 +101,7 @@ module.exports = class SqlSync
   # TODO: query
   destroy: (query, callback) ->
     @model_type.batch query, {$limit: DESTROY_BATCH_LIMIT, method: 'toJSON'}, callback, (model_json, callback) =>
-      Utils.destroyRelationsByJSON @model_type, model_json, (err) =>
+      Utils.patchRemoveByJSON @model_type, model_json, (err) =>
         return callback(err) if err
         @connection(@table).where('id', model_json.id).del().exec (err) => callback(err)
 
