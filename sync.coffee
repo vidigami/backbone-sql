@@ -5,10 +5,8 @@ URL = require 'url'
 inflection = require 'inflection'
 Queue = require 'queue-async'
 
-When = require 'when'
-WhenNodeFn = require 'when/node/function'
-
 SqlCursor = require './lib/sql_cursor'
+DatabaseTools = require './lib/db_tools'
 Schema = require 'backbone-orm/lib/schema'
 Utils = require 'backbone-orm/lib/utils'
 bbCallback = Utils.bbCallback
@@ -28,6 +26,8 @@ module.exports = class SqlSync
     @schema.initialize()
     throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
     @connect(url)
+
+  db: => new DatabaseTools(@connection, @table, @schema)
 
   ###################################
   # Classic Backbone Sync
@@ -68,33 +68,7 @@ module.exports = class SqlSync
   ###################################
   # Backbone ORM - Class Extensions
   ###################################
-  resetSchema: (options, callback) ->
-    join_tables = []
-
-    # TODO: connection should be obtained through a callback, not internal knowledge
-    @model_type._connection.Schema.dropTableIfExists(@table)
-      .then(=> @model_type._connection.Schema.createTable @table, (table) =>
-        schema = @model_type.schema()
-        console.log "Creating table: #{@table} with fields: \'#{_.keys(schema.fields).join(', ')}\' and relations: \'#{_.keys(schema.relations).join(', ')}\'" if options.verbose
-
-        table.increments('id').primary()
-        for key, field of schema.fields
-          method = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
-          col = table[method](key).nullable()
-          col.index() if field.indexed
-          col.unique() if field.unique
-
-        for key, relation of schema.relations
-          continue if relation.isVirtual() # skip virtual
-          if relation.type is 'belongsTo'
-            table.integer(relation.foreign_key).nullable().index()
-          else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-            do (relation) ->
-              join_tables.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
-        return
-      )
-      .then(-> When.all(join_tables))
-      .then((-> callback()), callback)
+  resetSchema: (options, callback) -> @db().resetSchema(options, callback)
 
   cursor: (query={}) -> return new SqlCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
 
@@ -113,7 +87,6 @@ module.exports = class SqlSync
     url_parts = Utils.parseUrl(url)
     @model_type._connection = @connection = require('./lib/knex_connection').get(url_parts)
 
-#    sequelize_timestamps = @schema.fields.created_at and @schema.fields.updated_at
     @table = url_parts.table
     @schema.initialize()
 
@@ -127,6 +100,7 @@ module.exports = (type) ->
     sync.initialize()
     return module.exports.apply(null, Array::slice.call(arguments, 1)) if method is 'createSync' # create a new sync
     return sync if method is 'sync'
+    return sync.db() if method is 'db'
     return sync.schema if method is 'schema'
     return false if method is 'isRemote'
     return sync.table if method is 'tableName'
