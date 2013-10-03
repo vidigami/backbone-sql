@@ -27,7 +27,7 @@ module.exports = class SqlSync
     throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
     @connect(url)
 
-  db: => new DatabaseTools(@connection, @table, @schema)
+  db: => @db_tools or= new DatabaseTools(@connection, @table, @schema)
 
   ###################################
   # Classic Backbone Sync

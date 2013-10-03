@@ -1,24 +1,41 @@
+_ = require 'underscore'
 Knex = require 'knex'
-When = require 'when'
-WhenNodeFn = require 'when/node/function'
-
+Queue = require 'queue-async'
 
 module.exports = class DatabaseTools
 
   constructor: (@connection, @table_name, @schema) ->
+    @join_table_operations = []
+    @reset()
+
+  reset: => @promise = @table = null
 
   end: (callback) =>
     return callback(new Error('end() called with no operations in progress, call createTable or editTable first')) unless @promise
-    @promise.exec(callback)
+#    @promise.then(-> ) if @join_table_operations.length
+    @promise.exec (err) =>
+      # Always reset state
+      @reset()
+      console.log 'END', @table_name
+      return callback(err) if err
+      console.log @join_table_operations.length
+      if @join_table_operations.length
+        queue = new Queue(1)
+        for join_table_fn in @join_table_operations
+          do (join_table_fn) => queue.defer (callback) =>
+            join_table_fn(callback)
+        queue.await (err) => @join_table_operations = []; callback(err)
+      else
+        callback()
 
   createTable: =>
-    throw Error("Table operation already in progress, call end() first") if @promise or @table
-    @promise = @connection.Schema.createTable(@table_name, (t) => @table = t)
+    throw Error("Table operation on #{@table_name} already in progress, call end() first") if @promise or @table
+    @promise = @connection.schema.createTable(@table_name, (t) => @table = t)
     return @table
 
   editTable: =>
-    throw Error("Table operation already in progress, call end() first") if @promise or @table
-    @promise = @connection.Schema.table(@table_name, (t) => @table = t)
+    throw Error("Table operation on #{@table_name} already in progress, call end() first") if @promise or @table
+    @promise = @connection.schema.table(@table_name, (t) => @table = t)
     return @table
 
   addField: (key, field) =>
@@ -34,10 +51,28 @@ module.exports = class DatabaseTools
     column = @table[type](key)
     column[method]() for method in options
 
-  resetSchema: (options, callback) =>
-    join_tables = []
+  resetRelation: (key, relation) =>
+    @table = @editTable() unless @table
+    return if relation.isVirtual() # skip virtual
+    if relation.type is 'belongsTo'
+      @addColumn(relation.foreign_key, 'integer', ['nullable', 'index'])
+    else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+      @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback))
+#      @join_table_operations.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
 
-    @connection.Schema.dropTableIfExists(@table_name).exec (err) =>
+  addRelation: (key, relation) =>
+    @table = @editTable() unless @table
+    return if relation.isVirtual() # skip virtual
+    if relation.type is 'belongsTo'
+      @addColumn(relation.foreign_key, 'integer', ['nullable', 'index'])
+    else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+      @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback))
+#      @join_table_operations.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
+
+  resetSchema: (options, callback) =>
+
+    console.log 'RESETTING', @table_name
+    @connection.schema.dropTableIfExists(@table_name).exec (err) =>
       return callback(err) if err
 
       @table = @createTable()
@@ -45,20 +80,6 @@ module.exports = class DatabaseTools
 
       @addColumn('id', 'increments', ['primary'])
       @addField(key, field) for key, field of @schema.fields
+      @resetRelation(key, relation) for key, relation of @schema.relations
 
-      for key, relation of @schema.relations
-        continue if relation.isVirtual() # skip virtual
-        if relation.type is 'belongsTo'
-          @table.integer(relation.foreign_key).nullable().index()
-        else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-          do (relation) ->
-            join_tables.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
-
-#        console.log 3
-#        @end (err) =>
-#          return callback(err) if err
-#          When.all(join_tables)
-#          callback()
-#      )
-      @promise.then(-> When.all(join_tables))
-      @promise.then((-> callback()), callback)
+      @end(callback)
