@@ -12,13 +12,11 @@ module.exports = class DatabaseTools
 
   end: (callback) =>
     return callback(new Error('end() called with no operations in progress, call createTable or editTable first')) unless @promise
-#    @promise.then(-> ) if @join_table_operations.length
     @promise.exec (err) =>
       # Always reset state
       @reset()
       console.log 'END', @table_name
       return callback(err) if err
-      console.log @join_table_operations.length
       if @join_table_operations.length
         queue = new Queue(1)
         for join_table_fn in @join_table_operations
@@ -66,16 +64,17 @@ module.exports = class DatabaseTools
     if relation.type is 'belongsTo'
       @addColumn(relation.foreign_key, 'integer', ['nullable', 'index'])
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-      @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback))
+      @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().db().ensureSchema(callback))
 #      @join_table_operations.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
 
   resetSchema: (options, callback) =>
+    (callback = options; options = {}) if arguments.length is 1
 
     console.log 'RESETTING', @table_name
     @connection.schema.dropTableIfExists(@table_name).exec (err) =>
       return callback(err) if err
 
-      @table = @createTable()
+      @createTable()
       console.log "Creating table: #{@table_name} with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
 
       @addColumn('id', 'increments', ['primary'])
@@ -83,3 +82,67 @@ module.exports = class DatabaseTools
       @resetRelation(key, relation) for key, relation of @schema.relations
 
       @end(callback)
+
+  ensureSchema: (options, callback) =>
+    (callback = options; options = {}) if arguments.length is 1
+
+    @hasTable (err, has_table) =>
+      return callback(err) if err
+
+      console.log 'ENSURE', @table_name, has_table
+      if has_table
+        @editTable()
+      else
+        @createTable()
+
+      console.log "Ensuring table: #{@table_name} with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
+
+      queue = new Queue(1)
+
+      queue.defer (callback) =>
+        @ensureColumn('id', 'increments', ['primary'], callback)
+
+      for key, field of @schema.fields
+        do (key, field) => queue.defer (callback) =>
+          @ensureField(key, field, callback)
+
+      for key, relation of @schema.relations
+        do (key, relation) => queue.defer (callback) =>
+          @ensureRelation(key, relation, callback)
+
+      queue.await (err) =>
+        return callback(err) if err
+        @end(callback)
+
+  hasColumn: (column, callback) => @connection.schema.hasColumn(@table_name, column).exec callback
+  hasTable: (callback) => @connection.schema.hasTable(@table_name).exec callback
+
+  ensureRelation: (key, relation, callback) =>
+    if relation.type is 'belongsTo'
+      console.log 'ensure relation', @table_name, key
+      @hasColumn relation.foreign_key, (err, has_column) =>
+        return callback(err) if err
+        @addRelation(key, relation) unless has_column
+        callback()
+    else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+      console.log 'ensure m2m', @table_name, key
+      relation.findOrGenerateJoinTable().db().ensureSchema(callback)
+
+  ensureField: (key, field, callback) =>
+    console.log 'CHECKCOL', @table_name, key
+    @hasColumn key, (err, has_column) =>
+      console.log 'ensureField', @table_name, key, has_column
+      return callback(err) if err
+      @addField(key, field) unless has_column
+      callback()
+
+  ensureColumn: (key, type, options, callback) =>
+    @table = @editTable() unless @table
+#    console.log @table
+#    console.log @table.hasColumn
+#    console.log @table.addColumn
+    @hasColumn key, (err, has_column) =>
+      console.log 'ensureColumn', @table_name, key, has_column
+      return callback(err) if err
+      @addColumn(key, type, options) unless has_column
+      callback()
