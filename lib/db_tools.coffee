@@ -8,7 +8,9 @@ module.exports = class DatabaseTools
     @join_table_operations = []
     @reset()
 
-  reset: => @promise = @table = null
+  reset: =>
+    @promise = @table = null
+    return @
 
   end: (callback) =>
     return callback(new Error('end() called with no operations in progress, call createTable or editTable first')) unless @promise
@@ -26,46 +28,50 @@ module.exports = class DatabaseTools
       else
         callback()
 
+  # Create and edit table methods create a knex table instance and promise
+  # Operations are carried out (ie the promise is resolved) when end() is called
   createTable: =>
     throw Error("Table operation on #{@table_name} already in progress, call end() first") if @promise or @table
     @promise = @connection.schema.createTable(@table_name, (t) => @table = t)
-    return @table
+    return @
 
   editTable: =>
     throw Error("Table operation on #{@table_name} already in progress, call end() first") if @promise or @table
     @promise = @connection.schema.table(@table_name, (t) => @table = t)
-    return @table
+    return @
 
   addField: (key, field) =>
-    @table = @editTable() unless @table
+    @editTable() unless @table
     type = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
     options = ['nullable']
     options.push('index') if field.indexed
     options.push('unique') if field.unique
     @addColumn(key, type, options)
+    return @
 
-  addColumn: (key, type, options) =>
-    @table = @editTable() unless @table
+  addColumn: (key, type, options={}) =>
+    @editTable() unless @table
     column = @table[type](key)
     column[method]() for method in options
-
-  resetRelation: (key, relation) =>
-    @table = @editTable() unless @table
-    return if relation.isVirtual() # skip virtual
-    if relation.type is 'belongsTo'
-      @addColumn(relation.foreign_key, 'integer', ['nullable', 'index'])
-    else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-      @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback))
-#      @join_table_operations.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
+    return @
 
   addRelation: (key, relation) =>
-    @table = @editTable() unless @table
+    @editTable() unless @table
     return if relation.isVirtual() # skip virtual
     if relation.type is 'belongsTo'
       @addColumn(relation.foreign_key, 'integer', ['nullable', 'index'])
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
       @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().db().ensureSchema(callback))
-#      @join_table_operations.push(WhenNodeFn.call((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback)))
+    return @
+
+  resetRelation: (key, relation) =>
+    @editTable() unless @table
+    return if relation.isVirtual() # skip virtual
+    if relation.type is 'belongsTo'
+      @addColumn(relation.foreign_key, 'integer', ['nullable', 'index'])
+    else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+      @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback))
+    return @
 
   resetSchema: (options, callback) =>
     (callback = options; options = {}) if arguments.length is 1
@@ -98,9 +104,7 @@ module.exports = class DatabaseTools
       console.log "Ensuring table: #{@table_name} with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
 
       queue = new Queue(1)
-
-      queue.defer (callback) =>
-        @ensureColumn('id', 'increments', ['primary'], callback)
+      queue.defer (callback) => @ensureColumn('id', 'increments', ['primary'], callback)
 
       for key, field of @schema.fields
         do (key, field) => queue.defer (callback) =>
@@ -113,9 +117,6 @@ module.exports = class DatabaseTools
       queue.await (err) =>
         return callback(err) if err
         @end(callback)
-
-  hasColumn: (column, callback) => @connection.schema.hasColumn(@table_name, column).exec callback
-  hasTable: (callback) => @connection.schema.hasTable(@table_name).exec callback
 
   ensureRelation: (key, relation, callback) =>
     if relation.type is 'belongsTo'
@@ -137,12 +138,16 @@ module.exports = class DatabaseTools
       callback()
 
   ensureColumn: (key, type, options, callback) =>
-    @table = @editTable() unless @table
-#    console.log @table
-#    console.log @table.hasColumn
-#    console.log @table.addColumn
+    @editTable() unless @table
     @hasColumn key, (err, has_column) =>
       console.log 'ensureColumn', @table_name, key, has_column
       return callback(err) if err
       @addColumn(key, type, options) unless has_column
       callback()
+
+  # knex method wrappers
+  hasColumn: (column, callback) => @connection.schema.hasColumn(@table_name, column).exec callback
+  hasTable: (callback) => @connection.schema.hasTable(@table_name).exec callback
+  dropTable: (callback) => @connection.schema.dropTable(@table_name).exec callback
+  dropTableIfExists: (callback) => @connection.schema.dropTableIfExists(@table_name).exec callback
+  renameTable: (to, callback) => @connection.schema.renameTable(@table_name, to).exec callback
