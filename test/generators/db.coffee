@@ -18,13 +18,34 @@ runTests = (options, callback) ->
       a_string: 'String'
     sync: SYNC(Flat)
 
+  class Reverse extends Backbone.Model
+    urlRoot: "#{DATABASE_URL}/reverses"
+    @schema: _.defaults({
+      owner: -> ['belongsTo', Owner]
+      another_owner: -> ['belongsTo', Owner, as: 'more_reverses']
+    }, BASE_SCHEMA)
+    sync: SYNC(Reverse)
+
+  class Owner extends Backbone.Model
+    urlRoot: "#{DATABASE_URL}/owners"
+    @schema: _.defaults({
+      flats: -> ['hasMany', Flat]
+      reverses: -> ['hasMany', Reverse]
+      more_reverses: -> ['hasMany', Reverse, as: 'another_owner']
+    }, BASE_SCHEMA)
+    sync: SYNC(Owner)
+
   describe "Sql db tools", ->
 
     before (done) -> return done() unless options.before; options.before([Flat], done)
     after (done) -> callback(); done()
     beforeEach (done) ->
-      db = Flat.db()
-      db.dropTableIfExists done
+      queue = new Queue(1)
+      for model_type in [Flat, Reverse, Owner]
+        do (model_type) -> queue.defer (callback) ->
+          db = model_type.db()
+          db.dropTableIfExists callback
+      queue.await done
 
     it 'Can drop a models table', (done) ->
       db = Flat.db()
