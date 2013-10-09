@@ -9,6 +9,7 @@ SqlCursor = require './lib/sql_cursor'
 DatabaseTools = require './lib/db_tools'
 Schema = require 'backbone-orm/lib/schema'
 Utils = require 'backbone-orm/lib/utils'
+QueryCache = require 'backbone-orm/lib/query_cache'
 bbCallback = Utils.bbCallback
 
 DESTROY_BATCH_LIMIT = 1000
@@ -51,6 +52,7 @@ module.exports = class SqlSync
     @connection(@table).insert(json, 'id').exec (err, res) =>
       return options.error(err) if err
       return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless res?.length
+      QueryCache.reset(@model_type)
       json.id = res[0]
       options.success(json)
 
@@ -58,11 +60,13 @@ module.exports = class SqlSync
     json = model.toJSON()
     @connection(@table).where('id', model.id).update(json).exec (err, res) ->
       return options.error(err) if err
+      QueryCache.reset(@model_type)
       options.success(json)
 
   delete: (model, options) =>
     @connection(@table).where('id', model.id).del().exec (err, res) ->
       return options.error(err) if err
+      QueryCache.reset(@model_type)
       options.success()
 
   ###################################
@@ -76,7 +80,9 @@ module.exports = class SqlSync
     @model_type.batch query, {$limit: DESTROY_BATCH_LIMIT, method: 'toJSON'}, callback, (model_json, callback) =>
       Utils.patchRemoveByJSON @model_type, model_json, (err) =>
         return callback(err) if err
-        @connection(@table).where('id', model_json.id).del().exec (err) => callback(err)
+        @connection(@table).where('id', model_json.id).del().exec (err) =>
+          QueryCache.reset(@model_type)
+          callback(err)
 
   ###################################
   # Backbone SQL Sync - Custom Extensions

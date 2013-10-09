@@ -109,7 +109,7 @@ module.exports = class SqlCursor extends Cursor
 
     return conditions
 
-  toJSON: (callback) ->
+  queryToJSON: (callback) ->
     return callback(null, if @hasCursorQuery('$one') then null else []) if @hasCursorQuery('$zero')
 
     try
