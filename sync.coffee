@@ -72,7 +72,6 @@ module.exports = class SqlSync
 
   cursor: (query={}) -> return new SqlCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
 
-  # TODO: query
   destroy: (query, callback) ->
     @model_type.batch query, {$limit: DESTROY_BATCH_LIMIT, method: 'toJSON'}, callback, (model_json, callback) =>
       Utils.patchRemoveByJSON @model_type, model_json, (err) =>

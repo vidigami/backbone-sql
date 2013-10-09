@@ -17,7 +17,6 @@ module.exports = class DatabaseTools
     @promise.exec (err) =>
       # Always reset state
       @reset()
-      console.log 'END', @table_name
       return callback(err) if err
       if @join_table_operations.length
         queue = new Queue(1)
@@ -76,7 +75,6 @@ module.exports = class DatabaseTools
   resetSchema: (options, callback) =>
     (callback = options; options = {}) if arguments.length is 1
 
-    console.log 'RESETTING', @table_name
     @connection.schema.dropTableIfExists(@table_name).exec (err) =>
       return callback(err) if err
 
@@ -95,7 +93,6 @@ module.exports = class DatabaseTools
     @hasTable (err, has_table) =>
       return callback(err) if err
 
-      console.log 'ENSURE', @table_name, has_table
       if has_table
         @editTable()
       else
@@ -120,19 +117,15 @@ module.exports = class DatabaseTools
 
   ensureRelation: (key, relation, callback) =>
     if relation.type is 'belongsTo'
-      console.log 'ensure relation', @table_name, key
       @hasColumn relation.foreign_key, (err, has_column) =>
         return callback(err) if err
         @addRelation(key, relation) unless has_column
         callback()
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-      console.log 'ensure m2m', @table_name, key
       relation.findOrGenerateJoinTable().db().ensureSchema(callback)
 
   ensureField: (key, field, callback) =>
-    console.log 'CHECKCOL', @table_name, key
     @hasColumn key, (err, has_column) =>
-      console.log 'ensureField', @table_name, key, has_column
       return callback(err) if err
       @addField(key, field) unless has_column
       callback()
@@ -140,7 +133,6 @@ module.exports = class DatabaseTools
   ensureColumn: (key, type, options, callback) =>
     @editTable() unless @table
     @hasColumn key, (err, has_column) =>
-      console.log 'ensureColumn', @table_name, key, has_column
       return callback(err) if err
       @addColumn(key, type, options) unless has_column
       callback()

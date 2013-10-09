@@ -91,6 +91,7 @@ module.exports = class SqlCursor extends Cursor
         [relation, key] = key.split('.')
         related_wheres[relation] or= {}
         related_wheres[relation][key] = value
+
       # Many to Many relationships may be queried on the foreign key of the join table
       else if (reverse_relation = @model_type.reverseRelation(key)) and reverse_relation.join_table
         relation = reverse_relation.reverse_relation
