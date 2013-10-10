@@ -91,6 +91,7 @@ module.exports = class SqlCursor extends Cursor
         [relation, key] = key.split('.')
         related_wheres[relation] or= {}
         related_wheres[relation][key] = value
+
       # Many to Many relationships may be queried on the foreign key of the join table
       else if (reverse_relation = @model_type.reverseRelation(key)) and reverse_relation.join_table
         relation = reverse_relation.reverse_relation
@@ -108,7 +109,7 @@ module.exports = class SqlCursor extends Cursor
 
     return conditions
 
-  toJSON: (callback) ->
+  queryToJSON: (callback) ->
     return callback(null, if @hasCursorQuery('$one') then null else []) if @hasCursorQuery('$zero')
 
     try
@@ -198,7 +199,9 @@ module.exports = class SqlCursor extends Cursor
   # Process any remaining queries and return the json
   _processResponse: (json, callback) ->
     schema = @model_type.schema()
-    return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null) if @_cursor.$one
+
+#    if @_cursor.$one and not @_cursor.$values
+#      return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null)
 
     @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
     json = @selectResults(json)
