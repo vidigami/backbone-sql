@@ -7,7 +7,7 @@ Queue = require 'queue-async'
 Utils = require 'backbone-orm/lib/utils'
 bbCallback = Utils.bbCallback
 
-runTests = (options, callback) ->
+module.exports = (options, callback) ->
   DATABASE_URL = options.database_url or ''
   BASE_SCHEMA = options.schema or {}
   SYNC = options.sync
@@ -89,15 +89,6 @@ runTests = (options, callback) ->
           assert.ok(has_column, "Has the test column: #{has_column}")
           done()
 
-      done()
-
     it 'Can reset a single relation', (done) ->
+      console.log 'TODO'
       done()
-
-
-# each model should have available attribute 'id', 'name', 'created_at', 'updated_at', etc....
-# beforeEach should return the models_json for the current run
-module.exports = (options, callback) ->
-  queue = new Queue(1)
-  queue.defer (callback) -> runTests(options, callback)
-  queue.await callback
