@@ -96,7 +96,7 @@ module.exports = class SqlSync
     @schema.initialize()
 
 module.exports = (type) ->
-  if (new type()) instanceof Backbone.Collection # collection
+  if Utils.isCollection(new type()) # collection
     model_type = Utils.configureCollectionModelType(type, module.exports)
     return type::sync = model_type::sync
 
