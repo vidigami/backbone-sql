@@ -99,7 +99,7 @@ module.exports = class SqlSync
 
     @model_type._connection = @connections.master = KnexConnection.get(url_parts)
     @connections.all = [@connections.master]
-    if @slaves
+    if @slaves?.length
       @connections.slaves = []
       for slave_url in @slaves
         con = KnexConnection.get(Utils.parseUrl(slave_url))
