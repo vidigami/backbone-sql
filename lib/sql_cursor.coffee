@@ -203,9 +203,6 @@ module.exports = class SqlCursor extends Cursor
   _processResponse: (json, callback) ->
     schema = @model_type.schema()
 
-#    if @_cursor.$one and not @_cursor.$values
-#      return callback(null, if json.length then @backbone_adapter.nativeToAttributes(json[0], schema) else null)
-
     @backbone_adapter.nativeToAttributes(model_json, schema) for model_json in json
     json = @selectResults(json)
 

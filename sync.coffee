@@ -5,6 +5,7 @@ URL = require 'url'
 inflection = require 'inflection'
 Queue = require 'queue-async'
 
+KnexConnection = require './lib/knex_connection'
 SqlCursor = require './lib/sql_cursor'
 DatabaseTools = require './lib/db_tools'
 Schema = require 'backbone-orm/lib/schema'
@@ -17,18 +18,11 @@ DESTROY_BATCH_LIMIT = 1000
 module.exports = class SqlSync
 
   constructor: (@model_type, options={}) ->
+    console.log options
+    @[key] = value for key, value of options
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
     @schema = new Schema(@model_type)
     @backbone_adapter = require './lib/sql_backbone_adapter'
-
-  initialize: ->
-    return if @is_initialized; @is_initialized = true
-
-    @schema.initialize()
-    throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
-    @connect(url)
-
-  db: => @db_tools or= new DatabaseTools(@connection, @table, @schema)
 
   ###################################
   # Classic Backbone Sync
@@ -49,7 +43,7 @@ module.exports = class SqlSync
 
   create: (model, options) =>
     json = model.toJSON()
-    @connection(@table).insert(json, 'id').exec (err, res) =>
+    @getTable('master').insert(json, 'id').exec (err, res) =>
       return options.error(err) if err
       return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless res?.length
       QueryCache.reset(@model_type)
@@ -58,13 +52,13 @@ module.exports = class SqlSync
 
   update: (model, options) =>
     json = model.toJSON()
-    @connection(@table).where('id', model.id).update(json).exec (err, res) ->
+    @getTable('master').where('id', model.id).update(json).exec (err, res) ->
       return options.error(err) if err
       QueryCache.reset(@model_type)
       options.success(json)
 
   delete: (model, options) =>
-    @connection(@table).where('id', model.id).del().exec (err, res) ->
+    @getTable('master').where('id', model.id).del().exec (err, res) ->
       return options.error(err) if err
       QueryCache.reset(@model_type)
       options.success()
@@ -74,33 +68,62 @@ module.exports = class SqlSync
   ###################################
   resetSchema: (options, callback) -> @db().resetSchema(options, callback)
 
-  cursor: (query={}) -> return new SqlCursor(query, _.pick(@, ['model_type', 'connection', 'backbone_adapter']))
+  cursor: (query={}) ->
+    options = _.pick(@, ['model_type', 'backbone_adapter'])
+    options.connection = @getConnection()
+    return new SqlCursor(query, options)
 
   destroy: (query, callback) ->
     @model_type.batch query, {$limit: DESTROY_BATCH_LIMIT, method: 'toJSON'}, callback, (model_json, callback) =>
       Utils.patchRemoveByJSON @model_type, model_json, (err) =>
         return callback(err) if err
-        @connection(@table).where('id', model_json.id).del().exec (err) =>
+        @getTable('master').where('id', model_json.id).del().exec (err) =>
           QueryCache.reset(@model_type)
           callback(err)
 
   ###################################
   # Backbone SQL Sync - Custom Extensions
   ###################################
-  connect: (url) ->
-    return if @connection and @connection.url is url
-    url_parts = Utils.parseUrl(url)
-    @model_type._connection = @connection = require('./lib/knex_connection').get(url_parts)
+  initialize: ->
+    return if @is_initialized; @is_initialized = true
 
+    @schema.initialize()
+    throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
+    @connect(url)
+
+  connect: (url) ->
+
+    @connections or= {}
+    url_parts = Utils.parseUrl(url)
     @table = url_parts.table
+
+    @model_type._connection = @connections.master = KnexConnection.get(url_parts)
+    @connections.all = [@connections.master]
+    if @slaves
+      @connections.slaves = []
+      for slave_url in @slaves
+        con = KnexConnection.get(Utils.parseUrl(slave_url))
+        @connections.slaves.push(con)
+        @connections.all.push(con)
+
     @schema.initialize()
 
-module.exports = (type) ->
+  # Get the knex table instance for a db_type
+  getTable: (db_type) => @getConnection(db_type)(@table)
+
+  # Return the master db connection if db_type is 'master' or a random one otherwise
+  getConnection: (db_type) =>
+    return @connections.master if db_type is 'master' or @connections.all.length is 1
+    return @connections.all[~~(Math.random() * (@connections.all.length-1))]
+
+  db: => @db_tools or= new DatabaseTools(@connections.master, @table, @schema)
+
+module.exports = (type, options) ->
   if (new type()) instanceof Backbone.Collection # collection
     model_type = Utils.configureCollectionModelType(type, module.exports)
     return type::sync = model_type::sync
 
-  sync = new SqlSync(type)
+  sync = new SqlSync(type, options)
   type::sync = sync_fn = (method, model, options={}) -> # save for access by model extensions
     sync.initialize()
     return module.exports.apply(null, Array::slice.call(arguments, 1)) if method is 'createSync' # create a new sync

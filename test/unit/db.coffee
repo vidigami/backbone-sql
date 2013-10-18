@@ -20,5 +20,6 @@ module.exports = (options, callback) ->
       console.log "Running tests for variant: #{variant}"
       variant_test_parameters = _.clone(test_parameters)
       variant_test_parameters.database_url = require('../config/database')[variant]
-      require('../generators/db')(variant_test_parameters, callback)
+#      require('../generators/db')(variant_test_parameters, callback)
+      require('../generators/master_slave')(variant_test_parameters, callback)
   queue.await callback
