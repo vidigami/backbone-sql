@@ -15,6 +15,9 @@ COMPARATOR_KEYS = _.keys(COMPARATORS)
 _appendCondition = (conditions, key, value) ->
   if value?.$in
     if value.$in?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
+#
+#  if value?.$nin
+#    if value.$nin?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
 
   # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
   else if _.isObject(value) and ops_length = _.size(mongo_ops = _.pick(value, COMPARATOR_KEYS))
