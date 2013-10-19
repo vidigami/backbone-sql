@@ -119,7 +119,7 @@ module.exports = class SqlSync
   db: => @db_tools or= new DatabaseTools(@connections.master, @table, @schema)
 
 module.exports = (type, options) ->
-  if (new type()) instanceof Backbone.Collection # collection
+  if Utils.isCollection(new type()) # collection
     model_type = Utils.configureCollectionModelType(type, module.exports)
     return type::sync = model_type::sync
 
