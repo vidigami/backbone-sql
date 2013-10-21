@@ -18,7 +18,6 @@ DESTROY_BATCH_LIMIT = 1000
 module.exports = class SqlSync
 
   constructor: (@model_type, options={}) ->
-    console.log options
     @[key] = value for key, value of options
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
     @schema = new Schema(@model_type)

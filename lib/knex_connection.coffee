@@ -8,7 +8,6 @@ module.exports =
   get: (parameters) ->
     return connections[parameters.database_path] if connections[parameters.database_path]
 
-    console.log 'NEWCON', parameters
     connection = _.extend(_.pick(parameters, ['host', 'user', 'password', 'database']), {charset: 'utf8'})
     url_parts = URL.parse(parameters.database_path)
     switch url_parts.protocol
