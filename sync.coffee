@@ -1,7 +1,6 @@
 util = require 'util'
 _ = require 'underscore'
 Backbone = require 'backbone'
-path = require 'path'
 URL = require 'url'
 inflection = require 'inflection'
 Queue = require 'queue-async'
@@ -102,7 +101,7 @@ module.exports = class SqlSync
     if @slaves?.length
       @connections.slaves = []
       for slave_url in @slaves
-        slave_url_parts = Utils.parseUrl(path.join(slave_url, @table))
+        slave_url_parts = Utils.parseUrl("#{slave_url}/#{@table}")
         @connections.slaves.push(con)
         @connections.all.push(con)
 
