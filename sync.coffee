@@ -102,7 +102,7 @@ module.exports = class SqlSync
     if @slaves?.length
       @connections.slaves = []
       for slave_url in @slaves
-        con = KnexConnection.get(Utils.parseUrl(slave_url))
+        slave_url_parts = Utils.parseUrl(path.join(slave_url, @table))
         @connections.slaves.push(con)
         @connections.all.push(con)
 
