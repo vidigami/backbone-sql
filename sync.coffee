@@ -113,7 +113,7 @@ module.exports = class SqlSync
   # Return the master db connection if db_type is 'master' or a random one otherwise
   getConnection: (db_type) =>
     return @connections.master if db_type is 'master' or @connections.all.length is 1
-    return @connections.all[~~(Math.random() * (@connections.all.length-1))]
+    return @connections.all[~~(Math.random() * (@connections.all.length))]
 
   db: => @db_tools or= new DatabaseTools(@connections.master, @table, @schema)
 
