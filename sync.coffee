@@ -1,6 +1,7 @@
 util = require 'util'
 _ = require 'underscore'
 Backbone = require 'backbone'
+path = require 'path'
 URL = require 'url'
 inflection = require 'inflection'
 Queue = require 'queue-async'
@@ -33,7 +34,7 @@ module.exports = class SqlSync
         return options.error(err) if err
         return options.error(new Error 'Collection not fetched') if not json
         options.success?(json)
-    # a model
+      # a model
     else
       @cursor(model.id).toJSON (err, json) ->
         return options.error(err) if err
