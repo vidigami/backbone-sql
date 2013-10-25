@@ -10,7 +10,7 @@ mocha = new Mocha(
 )
 
 mocha.addFile('./test/suite.coffee')
-runner = mocha.run -> console.log('finished')
+runner = mocha.run -> console.log('finished'); process.exit(0)
 
 runner.on 'pass', (test) -> console.log '... %s passed', test.title
 runner.on 'fail', (test) -> console.log '... %s failed', test.title
