@@ -2,7 +2,7 @@ util = require 'util'
 assert = require 'assert'
 _ = require 'underscore'
 Backbone = require 'backbone'
-Queue = require 'queue-async'
+Queue = require 'backbone-orm/lib/queue'
 
 Utils = require 'backbone-orm/lib/utils'
 bbCallback = Utils.bbCallback

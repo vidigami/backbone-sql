@@ -1,6 +1,6 @@
 _ = require 'underscore'
 Knex = require 'knex'
-Queue = require 'queue-async'
+Queue = require 'backbone-orm/lib/queue'
 
 module.exports = class DatabaseTools
 

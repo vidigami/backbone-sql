@@ -1,5 +1,5 @@
 _ = require 'underscore'
-Queue = require 'queue-async'
+Queue = require 'backbone-orm/lib/queue'
 
 #DATABASE_VARIANTS = ['mysql']
 DATABASE_VARIANTS = ['postgres']

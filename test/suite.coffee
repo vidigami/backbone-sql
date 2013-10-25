@@ -1,4 +1,4 @@
-Queue = require 'queue-async'
+Queue = require 'backbone-orm/lib/queue'
 
 option_sets = require('backbone-orm/test/option_sets')
 
