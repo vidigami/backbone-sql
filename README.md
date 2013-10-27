@@ -17,3 +17,5 @@ Test
 Run the unit tests one time:
 
   $ npm test
+
+TODO: For slave database, configure your local database
