@@ -2,18 +2,18 @@ util = require 'util'
 _ = require 'underscore'
 Backbone = require 'backbone'
 inflection = require 'inflection'
+
 Queue = require 'backbone-orm/lib/queue'
 DatabaseURL = require 'backbone-orm/lib/database_url'
-
-Connection = require './lib/connection'
-SqlCursor = require './lib/sql_cursor'
-DatabaseTools = require './lib/db_tools'
-
 Schema = require 'backbone-orm/lib/schema'
 Utils = require 'backbone-orm/lib/utils'
 ModelCache = require('backbone-orm/lib/cache/singletons').ModelCache
 QueryCache = require('backbone-orm/lib/cache/singletons').QueryCache
 modelExtensions = require 'backbone-orm/lib/extensions/model'
+
+Connection = require './connection'
+SqlCursor = require './cursor'
+DatabaseTools = require './database_tools'
 
 bbCallback = Utils.bbCallback
 
@@ -25,7 +25,7 @@ module.exports = class SqlSync
     @[key] = value for key, value of options
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
     @schema = new Schema(@model_type)
-    @backbone_adapter = require './lib/sql_backbone_adapter'
+    @backbone_adapter = require './backbone_adapter'
 
   ###################################
   # Classic Backbone Sync
