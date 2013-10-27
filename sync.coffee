@@ -1,11 +1,11 @@
 util = require 'util'
 _ = require 'underscore'
 Backbone = require 'backbone'
-URL = require 'url'
 inflection = require 'inflection'
 Queue = require 'backbone-orm/lib/queue'
+DatabaseURL = require 'backbone-orm/lib/database_url'
 
-KnexConnection = require './lib/knex_connection'
+Connection = require './lib/connection'
 SqlCursor = require './lib/sql_cursor'
 DatabaseTools = require './lib/db_tools'
 
@@ -99,19 +99,15 @@ module.exports = class SqlSync
 
   connect: (url) ->
 
-    @connections or= {}
-    url_parts = Utils.parseUrl(url)
-    @table = url_parts.table
+    @table = (new DatabaseURL(url)).table
+    @connections or= {all: [], master: new Connection(url), slaves: []}
 
-    @model_type._connection = @connections.master = KnexConnection.get(url_parts)
-    @connections.all = [@connections.master]
     if @slaves?.length
-      @connections.slaves = []
-      for slave_url in @slaves
-        slave_url_parts = Utils.parseUrl("#{slave_url}/#{@table}")
-        con = KnexConnection.get(slave_url_parts)
-        @connections.slaves.push(con)
-        @connections.all.push(con)
+      @connections.slaves.push(connection = new Connection("#{slave_url}/#{@table}")) for slave_url in @slaves
+
+    # cache all connections
+    @connections.all.push(@connections.master)
+    @connections.all.push(@connections.all, @connections.slaves or [])
 
     @schema.initialize()
 
@@ -120,8 +116,8 @@ module.exports = class SqlSync
 
   # Return the master db connection if db_type is 'master' or a random one otherwise
   getConnection: (db_type) =>
-    return @connections.master if db_type is 'master' or @connections.all.length is 1
-    return @connections.all[~~(Math.random() * (@connections.all.length))]
+    return @connections.master.knex() if db_type is 'master' or @connections.all.length is 1
+    return @connections.all[~~(Math.random() * (@connections.all.length))].knex()
 
   db: => @db_tools or= new DatabaseTools(@connections.master, @table, @schema)
 

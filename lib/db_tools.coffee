@@ -31,12 +31,12 @@ module.exports = class DatabaseTools
   # Operations are carried out (ie the promise is resolved) when end() is called
   createTable: =>
     throw Error("Table operation on #{@table_name} already in progress, call end() first") if @promise or @table
-    @promise = @connection.schema.createTable(@table_name, (t) => @table = t)
+    @promise = @connection.knex().schema.createTable(@table_name, (t) => @table = t)
     return @
 
   editTable: =>
     throw Error("Table operation on #{@table_name} already in progress, call end() first") if @promise or @table
-    @promise = @connection.schema.table(@table_name, (t) => @table = t)
+    @promise = @connection.knex().schema.table(@table_name, (t) => @table = t)
     return @
 
   addField: (key, field) =>
@@ -75,7 +75,7 @@ module.exports = class DatabaseTools
   resetSchema: (options, callback) =>
     (callback = options; options = {}) if arguments.length is 1
 
-    @connection.schema.dropTableIfExists(@table_name).exec (err) =>
+    @connection.knex().schema.dropTableIfExists(@table_name).exec (err) =>
       return callback(err) if err
 
       @createTable()
@@ -138,8 +138,8 @@ module.exports = class DatabaseTools
       callback()
 
   # knex method wrappers
-  hasColumn: (column, callback) => @connection.schema.hasColumn(@table_name, column).exec callback
-  hasTable: (callback) => @connection.schema.hasTable(@table_name).exec callback
-  dropTable: (callback) => @connection.schema.dropTable(@table_name).exec callback
-  dropTableIfExists: (callback) => @connection.schema.dropTableIfExists(@table_name).exec callback
-  renameTable: (to, callback) => @connection.schema.renameTable(@table_name, to).exec callback
+  hasColumn: (column, callback) => @connection.knex().schema.hasColumn(@table_name, column).exec callback
+  hasTable: (callback) => @connection.knex().schema.hasTable(@table_name).exec callback
+  dropTable: (callback) => @connection.knex().schema.dropTable(@table_name).exec callback
+  dropTableIfExists: (callback) => @connection.knex().schema.dropTableIfExists(@table_name).exec callback
+  renameTable: (to, callback) => @connection.knex().schema.renameTable(@table_name, to).exec callback
