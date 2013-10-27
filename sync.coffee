@@ -106,9 +106,7 @@ module.exports = class SqlSync
       @connections.slaves.push(connection = new Connection("#{slave_url}/#{@table}")) for slave_url in @slaves
 
     # cache all connections
-    @connections.all.push(@connections.master)
-    @connections.all.push(@connections.all, @connections.slaves or [])
-
+    @connections.all = [@connections.master].concat(@connections.slaves)
     @schema.initialize()
 
   # Get the knex table instance for a db_type
