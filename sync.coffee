@@ -3,7 +3,7 @@ _ = require 'underscore'
 Backbone = require 'backbone'
 URL = require 'url'
 inflection = require 'inflection'
-Queue = require 'queue-async'
+Queue = require 'backbone-orm/lib/queue'
 
 KnexConnection = require './lib/knex_connection'
 SqlCursor = require './lib/sql_cursor'
