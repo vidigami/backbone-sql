@@ -14,12 +14,13 @@ PROTOCOLS =
   'sqlite:': 'sqlite3', 'sqlite3:': 'sqlite3'
 
 module.exports = class Connection
-  constructor: (@url) ->
+  constructor: (full_url) ->
+    database_url = new DatabaseUrl(full_url)
+    @url = database_url.format({exclude_table: true, exclude_query: true}) # pool the raw endpoint without the table
     return if @knex_connection = ConnectionPool.get(@url) # found in pool
 
-    url = new DatabaseUrl(@url)
-    throw "Unrecognized sql variant: #{@url} for protocol: #{url.protocol}" unless protocol = PROTOCOLS[url.protocol]
-    knex = Knex.initialize({client: protocol, connection: _.extend(_.pick(url, ['host', 'database']), {charset: 'utf8'}, url.parseAuth() or {})})
+    throw "Unrecognized sql variant: #{full_url} for protocol: #{database_url.protocol}" unless protocol = PROTOCOLS[database_url.protocol]
+    knex = Knex.initialize({client: protocol, connection: _.extend(_.pick(database_url, ['host', 'database']), {charset: 'utf8'}, database_url.parseAuth() or {})})
     ConnectionPool.set(@url, @knex_connection = new KnexConnection(knex))
 
   knex: -> return @knex_connection?.knex

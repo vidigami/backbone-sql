@@ -88,6 +88,8 @@ module.exports = class DatabaseTools
       @end(callback)
 
   ensureSchema: (options, callback) =>
+    console.log "ensureSchema"
+
     (callback = options; options = {}) if arguments.length is 1
 
     @hasTable (err, has_table) =>
