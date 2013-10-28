@@ -4,6 +4,7 @@ _ = require 'underscore'
 Backbone = require 'backbone'
 Queue = require 'backbone-orm/lib/queue'
 
+ModelTypeID = require('backbone-orm/lib/src/cache/singletons').ModelTypeID
 Utils = require 'backbone-orm/lib/utils'
 bbCallback = Utils.bbCallback
 
@@ -12,6 +13,8 @@ module.exports = (options, callback) ->
   SLAVE_DATABASE_URL = "#{DATABASE_URL}_slave"
   BASE_SCHEMA = options.schema or {}
   SYNC = options.sync
+
+  ModelTypeID.reset()
 
   class Flat extends Backbone.Model
     urlRoot: "#{DATABASE_URL}/flats"

@@ -15,6 +15,7 @@ Schema = require 'backbone-orm/lib/schema'
 Utils = require 'backbone-orm/lib/utils'
 ModelCache = require('backbone-orm/lib/cache/singletons').ModelCache
 QueryCache = require('backbone-orm/lib/cache/singletons').QueryCache
+ModelTypeID = require('backbone-orm/lib/cache/singletons').ModelTypeID
 modelExtensions = require 'backbone-orm/lib/extensions/model'
 
 Connection = require './connection'
@@ -30,6 +31,7 @@ module.exports = class SqlSync
   constructor: (@model_type, options={}) ->
     @[key] = value for key, value of options
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
+    @model_type.model_id = ModelTypeID.generate(@model_type)
     @schema = new Schema(@model_type)
     @backbone_adapter = require './backbone_adapter'
 
