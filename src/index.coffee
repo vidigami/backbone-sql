@@ -5,4 +5,4 @@
 ###
 
 module.exports =
-  sync: require './lib/sync'
+  sync: require './sync'
