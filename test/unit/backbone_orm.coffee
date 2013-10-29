@@ -12,7 +12,7 @@ module.exports = (options, callback) ->
       created_at: 'DateTime'
       updated_at: 'DateTime'
       name: ['String', indexed: true]
-    sync: require('../../src/sync')
+    sync: require('../../lib/sync')
 
   queue = new Queue(1)
   for variant in DATABASE_VARIANTS
