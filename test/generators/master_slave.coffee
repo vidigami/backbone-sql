@@ -4,9 +4,6 @@ _ = require 'underscore'
 Backbone = require 'backbone'
 Queue = require 'backbone-orm/lib/queue'
 
-Utils = require 'backbone-orm/lib/utils'
-bbCallback = Utils.bbCallback
-
 module.exports = (options, callback) ->
   DATABASE_URL = options.database_url or ''
   SLAVE_DATABASE_URL = "#{DATABASE_URL}_slave"

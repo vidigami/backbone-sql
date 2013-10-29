@@ -22,8 +22,6 @@ Connection = require './connection'
 SqlCursor = require './cursor'
 DatabaseTools = require './database_tools'
 
-bbCallback = Utils.bbCallback
-
 DESTROY_BATCH_LIMIT = 1000
 
 module.exports = class SqlSync
