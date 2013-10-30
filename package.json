@@ -1,0 +1,43 @@
+{
+  "name": "backbone-sql",
+  "version": "0.5.0",
+  "description": "PostgreSQL, MySQL, and SQLite3 storage for BackboneORM",
+  "main": "./lib/index.js",
+  "license": "MIT",
+  "author": "Gwilym Humphreys (https://github.com/gwilymhumphreys)",
+  "contributors": ["Kevin Malakoff (https://github.com/kmalakoff)"],
+  "repository": {"type": "git", "url": "https://bitbucket.org/vidigami/backbone-sql.git"},
+  "keywords": ["backbone", "orm", "backbone-orm", "sql", "mysql", "postgres", "pg", "sqlite", "sqlite3"],
+  "engines": {"node": "*"},
+  "scripts": {
+    "test": "npm run build; NODE_ENV=test mocha test/suite.coffee --compilers coffee:coffee-script --reporter spec --timeout 2000",
+    "build": "coffee -o lib -c src",
+    "watch": "coffee -o lib -w src",
+    "clean": "rm -rf lib/*",
+    "prepublish": "npm run build",
+
+    "build_dep": "npm run-script backbone-orm build; npm run-script backbone-rest build",
+    "watch_dep": "npm run-script backbone-orm watch; npm run-script backbone-rest watch"
+  },
+  "devDependencies": {
+    "coffee-script": "*",
+    "codo": "1.7.x",
+    "mocha": "*",
+    "powerset": "0.0.x",
+    "backbone-rest": "0.5.x",
+    "supertest": "0.7.x",
+    "express": "3.2.x",
+    "pg": "2.3.x",
+    "mysql": "2.0.x",
+    "sqlite3": "2.1.x"
+  },
+  "dependencies": {
+    "underscore": "1.5.x",
+    "backbone": "1.1.x",
+    "backbone-orm": "0.5.x",
+    "moment": "2.0.x",
+    "inflection": "1.2.x",
+    "knex": "0.4.x",
+    "when": "2.4.x"
+  }
+}
