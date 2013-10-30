@@ -86,12 +86,14 @@ module.exports = class SqlSync
     return new SqlCursor(query, options)
 
   destroy: (query, callback) ->
-    @model_type.batch query, {$limit: DESTROY_BATCH_LIMIT, method: 'toJSON'}, callback, (model_json, callback) =>
-      Utils.patchRemoveByJSON @model_type, model_json, (err) =>
-        return callback(err) if err
-        @getTable('master').where('id', model_json.id).del().exec (err) =>
+    @model_type.each _.extend({$each: {limit: DESTROY_BATCH_LIMIT, json: true}}, query),
+      ((model_json, callback) =>
+        Utils.patchRemoveByJSON @model_type, model_json, (err) =>
           return callback(err) if err
-          QueryCache.reset @model_type, callback
+          @getTable('master').where('id', model_json.id).del().exec (err) =>
+            return callback(err) if err
+            QueryCache.reset @model_type, callback
+      ), callback
 
   ###################################
   # Backbone SQL Sync - Custom Extensions
