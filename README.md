@@ -1,21 +1,19 @@
-Introduction
+[![Build Status](https://secure.travis-ci.org/vidigami/backbone-sql.png)](http://travis-ci.org/vidigami/backbone-sql)
+
+![logo](https://github.com/vidigami/backbone-sql/raw/master/media/logo.png)
+
+PostgreSQL, MySQL, and SQLite3 storage for BackboneORM.
+
+Please [checkout the website](http://vidigami.github.io/backbone-orm/) for examples, documentation, and community!
+
+
+For Contributors
 ============
 
-A collection of Classes and Utilities for interfacing with an SQL in Node.js using Backbone.js Models and Collections.
+To build the library for Node.js:
 
-Install
-=======
+  $ npm run build
 
-Install all npm modules:
-
-  $ cd backbone-sql
-  $ npm install
-
-Test
-====
-
-Run the unit tests one time:
+Please run tests before submitting a pull request.
 
   $ npm test
-
-TODO: For slave database, configure your local database
