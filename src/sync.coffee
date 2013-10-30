@@ -106,7 +106,6 @@ module.exports = class SqlSync
     @connect(url)
 
   connect: (url) ->
-
     @table = (new DatabaseURL(url)).table
     @connections or= {all: [], master: new Connection(url), slaves: []}
 
