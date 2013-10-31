@@ -7,8 +7,7 @@ PostgreSQL, MySQL, and SQLite3 storage for BackboneORM.
 Please [checkout the website](http://vidigami.github.io/backbone-orm/) for examples, documentation, and community!
 
 
-For Contributors
-============
+### For Contributors
 
 To build the library for Node.js:
 
