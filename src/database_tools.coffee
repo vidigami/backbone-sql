@@ -5,8 +5,11 @@
 ###
 
 _ = require 'underscore'
+inflection = require 'inflection'
 Knex = require 'knex'
 Queue = require 'backbone-orm/lib/queue'
+KNEX_COLUMN_OPERATORS = ['indexed', 'nullable', 'unique']
+KNEX_COLUMN_OPTIONS = ['textType', 'length', 'precision', 'scale', 'value', 'values']
 
 module.exports = class DatabaseTools
 
@@ -48,16 +51,36 @@ module.exports = class DatabaseTools
   addField: (key, field) =>
     @editTable() unless @table
     type = "#{field.type[0].toLowerCase()}#{field.type.slice(1)}"
-    options = ['nullable']
-    options.push('index') if field.indexed
-    options.push('unique') if field.unique
-    @addColumn(key, type, options)
+    @addColumn(key, type, field)
     return @
+
+  addIDColumn: =>
+    @addColumn('id', 'increments', ['primary'])
 
   addColumn: (key, type, options={}) =>
     @editTable() unless @table
-    column = @table[type](key)
-    column[method]() for method in options
+
+    column_args = [key]
+
+    # Assign column specific arguments
+    constructor_options = _.pick(options, KNEX_COLUMN_OPTIONS)
+    unless _.isEmpty(constructor_options)
+      # Special case as they take two args
+      if type in ['float', 'decimal']
+        column_args[1] = constructor_options['precision']
+        column_args[2] = constructor_options['scale']
+      # Assume we've been given one valid argument
+      else
+        column_args[1] = _.values(constructor_options)[0]
+
+    column = @table[type].apply(@table, column_args)
+
+    knex_methods = ['nullable'] unless options.nullable is false
+    knex_methods.push('index') if options.indexed
+    knex_methods.push('unique') if options.unique
+
+    column[method]() for method in knex_methods
+
     return @
 
   addRelation: (key, relation) =>
@@ -87,62 +110,71 @@ module.exports = class DatabaseTools
       @createTable()
       console.log "Creating table: #{@table_name} with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
 
-      @addColumn('id', 'increments', ['primary'])
+      @addIDColumn()
       @addField(key, field) for key, field of @schema.fields
       @resetRelation(key, relation) for key, relation of @schema.relations
 
       @end(callback)
 
+  # Ensure that the schema is reflected correctly in the database
+  # Will create a table and add columns as required
+  # Will not remove columns
   ensureSchema: (options, callback) =>
-    console.log "ensureSchema"
 
     (callback = options; options = {}) if arguments.length is 1
 
-    @hasTable (err, has_table) =>
+    @hasTable (err, table_exists) =>
       return callback(err) if err
-
-      if has_table
-        @editTable()
-      else
-        @createTable()
-
       console.log "Ensuring table: #{@table_name} with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
 
-      queue = new Queue(1)
-      queue.defer (callback) => @ensureColumn('id', 'increments', ['primary'], callback)
+      unless table_exists
+        @createTable()
+        @addIDColumn()
+        @end (err) =>
+          return callback(err) if err
+          return @ensureSchemaForExistingTable(options, callback)
+      else
+        return @ensureSchemaForExistingTable(options, callback)
 
-      for key, field of @schema.fields
-        do (key, field) => queue.defer (callback) =>
-          @ensureField(key, field, callback)
+  # Should only be called once the table exists - can't do column checks unless the table has been created
+  ensureSchemaForExistingTable: (options, callback) =>
+    @editTable()
 
-      for key, relation of @schema.relations
-        do (key, relation) => queue.defer (callback) =>
-          @ensureRelation(key, relation, callback)
+    queue = new Queue(1)
+    queue.defer (callback) => @ensureColumn('id', 'increments', ['primary'], callback)
 
-      queue.await (err) =>
-        return callback(err) if err
-        @end(callback)
+    for key, field of @schema.fields
+      do (key, field) => queue.defer (callback) =>
+        @ensureField(key, field, callback)
+
+    for key, relation of @schema.relations
+      do (key, relation) => queue.defer (callback) =>
+        @ensureRelation(key, relation, callback)
+
+    queue.await (err) =>
+      return callback(err) if err
+      @end(callback)
 
   ensureRelation: (key, relation, callback) =>
     if relation.type is 'belongsTo'
-      @hasColumn relation.foreign_key, (err, has_column) =>
+      @hasColumn relation.foreign_key, (err, column_exists) =>
         return callback(err) if err
-        @addRelation(key, relation) unless has_column
+        @addRelation(key, relation) unless column_exists
         callback()
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
       relation.findOrGenerateJoinTable().db().ensureSchema(callback)
 
   ensureField: (key, field, callback) =>
-    @hasColumn key, (err, has_column) =>
+    @hasColumn key, (err, column_exists) =>
       return callback(err) if err
-      @addField(key, field) unless has_column
+      @addField(key, field) unless column_exists
       callback()
 
   ensureColumn: (key, type, options, callback) =>
     @editTable() unless @table
-    @hasColumn key, (err, has_column) =>
+    @hasColumn key, (err, column_exists) =>
       return callback(err) if err
-      @addColumn(key, type, options) unless has_column
+      @addColumn(key, type, options) unless column_exists
       callback()
 
   # knex method wrappers

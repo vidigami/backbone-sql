@@ -26,7 +26,12 @@ module.exports = class Connection
     return if @knex_connection = ConnectionPool.get(@url) # found in pool
 
     throw "Unrecognized sql variant: #{full_url} for protocol: #{database_url.protocol}" unless protocol = PROTOCOLS[database_url.protocol]
-    connection_info = _.extend({host: database_url.hostname, database: database_url.database, charset: 'utf8'}, database_url.parseAuth() or {})
+
+    if protocol is 'sqlite3'
+      connection_info = {filename: database_url.host or ':memory:'}
+    else
+      connection_info = _.extend({host: database_url.hostname, database: database_url.database, charset: 'utf8'}, database_url.parseAuth() or {})
+
     knex = Knex.initialize({client: protocol, connection: connection_info})
     ConnectionPool.set(@url, @knex_connection = new KnexConnection(knex))
 
