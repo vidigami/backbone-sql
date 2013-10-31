@@ -75,7 +75,8 @@ module.exports = class DatabaseTools
 
     column = @table[type].apply(@table, column_args)
 
-    knex_methods = ['nullable'] unless options.nullable is false
+    knex_methods = []
+    knex_methods.push['notNullable'] if options.nullable is false
     knex_methods.push('index') if options.indexed
     knex_methods.push('unique') if options.unique
 
