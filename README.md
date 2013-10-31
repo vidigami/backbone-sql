@@ -4,7 +4,7 @@
 
 PostgreSQL, MySQL, and SQLite3 storage for BackboneORM.
 
-[BackboneSQL](http://vidigami.github.io/backbone-orm/backbone-http.html) provides an interface for [BackboneORM](http://vidigami.github.io/backbone-orm) models to persist to PostgreSQL, MySQL, and SQLite3 databases.
+[BackboneSQL](http://vidigami.github.io/backbone-orm/backbone-http.html) provides an interface for [BackboneORM](http://vidigami.github.io/backbone-orm) models to persist to SQL databases.
 
 [BackboneSQL](http://vidigami.github.io/backbone-orm/backbone-http.html) translates the [BackboneORM](http://vidigami.github.io/backbone-orm) query syntax to SQL via the [Knex](http://knexjs.org) query builder.
 
