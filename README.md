@@ -1,4 +1,3 @@
-[![Build Status](https://secure.travis-ci.org/vidigami/backbone-sql.png)](http://travis-ci.org/vidigami/backbone-sql)
 
 ![logo](https://github.com/vidigami/backbone-sql/raw/master/media/logo.png)
 
