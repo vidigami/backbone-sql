@@ -12,7 +12,7 @@ module.exports = (options, callback) ->
 
   class Flat extends Backbone.Model
     urlRoot: "#{DATABASE_URL}/flats"
-    @schema: _.extend BASE_SCHEMA,
+    schema: _.extend BASE_SCHEMA,
       a_string: 'String'
     sync: SYNC(Flat, {slaves: [SLAVE_DATABASE_URL]})
 
