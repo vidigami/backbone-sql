@@ -1,4 +1,3 @@
-
 ![logo](https://github.com/vidigami/backbone-sql/raw/master/media/logo.png)
 
 PostgreSQL, MySQL, and SQLite3 storage for BackboneORM.
@@ -58,17 +57,8 @@ These options may be applied to any field. Note that column options are currentl
       // Schema defines the fields for the model's table
       schema: {
         created_at: 'DateTime',
-        type: [
-          'Integer', {
-            nullable: false
-          }
-        ],
-        name: [
-          'String', {
-            unique: true,
-            indexed: true
-          }
-        ]
+        type: ['Integer', {nullable: false}],
+        name: ['String', {unique: true, indexed: true}]
       }
     });
 
