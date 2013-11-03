@@ -30,47 +30,57 @@ These options may be applied to any field. Note that column options are currentl
 * `unique`: Defaults to `false`. Set to true to create a unique constraint on the column.
 
 ###### CoffeeScript schema example
-    SQLSync = require('backbone-sql').sync
 
-    class Project extends Backbone.Model
+```coffeescript
+SQLSync = require('backbone-sql').sync
 
-      # Database connection and table name are specified with the urlRoot
-      urlRoot: 'postgres://username:password@localhost:27017/projects'
+class Project extends Backbone.Model
 
-      # Schema defines the fields for the model's table
-      schema:
-        created_at: 'DateTime'
-        type: ['Integer', nullable: false]
-        name: ['String', unique: true, indexed: true]
+  # Database connection and table name are specified with the urlRoot
+  urlRoot: 'postgres://username:password@localhost:27017/projects'
 
-      # Kick it off by setting the model's sync to an SQLSync
-      sync: SQLSync(Project)
+  # Schema defines the fields for the model's table
+  schema:
+    created_at: 'DateTime'
+    type: ['Integer', nullable: false]
+    name: ['String', unique: true, indexed: true]
+
+  # Kick it off by setting the model's sync to an SQLSync
+  sync: SQLSync(Project)
+```
 
 ###### JavaScript schema example
-    var SQLSync = require('backbone-sql').sync;
 
-    var Project = Backbon.Model.extend({
+```javascript
+var SQLSync = require('backbone-sql').sync;
 
-      // Database connection and table name are specified with the urlRoot
-      urlRoot: 'postgres://username:password@localhost:27017/projects',
+var Project = Backbon.Model.extend({
 
-      // Schema defines the fields for the model's table
-      schema: {
-        created_at: 'DateTime',
-        type: ['Integer', {nullable: false}],
-        name: ['String', {unique: true, indexed: true}]
-      }
-    });
+  // Database connection and table name are specified with the urlRoot
+  urlRoot: 'postgres://username:password@localhost:27017/projects',
 
-    // Kick it off by setting the model's sync to an SQLSync
-    Project.prototype.sync = SQLSync(Project);
+  // Schema defines the fields for the model's table
+  schema: {
+    created_at: 'DateTime',
+    type: ['Integer', {nullable: false}],
+    name: ['String', {unique: true, indexed: true}]
+  }
+});
+
+// Kick it off by setting the model's sync to an SQLSync
+Project.prototype.sync = SQLSync(Project);
+```
 
 ### For Contributors
 
 To build the library for Node.js:
 
-  $ npm run build
+```
+$ npm run
+```
 
 Please run tests before submitting a pull request.
 
-  $ npm test
+```
+$ npm test
+```
