@@ -20,15 +20,18 @@ module.exports = (options, callback) ->
     schema: _.defaults({
       owner: -> ['belongsTo', Owner]
       another_owner: -> ['belongsTo', Owner, as: 'more_reverses']
+      many_owners: -> ['hasMany', Owner, as: 'many_reverses']
     }, BASE_SCHEMA)
     sync: SYNC(Reverse)
 
   class Owner extends Backbone.Model
     urlRoot: "#{DATABASE_URL}/owners"
     schema: _.defaults({
+      a_string: 'String'
       flats: -> ['hasMany', Flat]
       reverses: -> ['hasMany', Reverse]
       more_reverses: -> ['hasMany', Reverse, as: 'another_owner']
+      many_reverses: -> ['hasMany', Reverse, as: 'many_owners']
     }, BASE_SCHEMA)
     sync: SYNC(Owner)
 
@@ -89,3 +92,41 @@ module.exports = (options, callback) ->
     it 'Can reset a single relation', (done) ->
       console.log 'TODO'
       done()
+
+    it 'Can ensure many to many models schemas', (done) ->
+      reverse_db = Reverse.db()
+      owner_db = Owner.db()
+
+      drop_queue = new Queue(1)
+
+      drop_queue.defer (callback) ->
+        reverse_db.dropTableIfExists (err) ->
+          assert.ok(!err, "No errors: #{err}")
+          callback()
+
+      drop_queue.defer (callback) ->
+        owner_db.dropTableIfExists (err) ->
+          assert.ok(!err, "No errors: #{err}")
+          callback()
+
+      drop_queue.await (err) ->
+        assert.ok(!err, "No errors: #{err}")
+
+        queue = new Queue(1)
+
+        queue.defer (callback) ->
+          reverse_db.ensureSchema (err) ->
+            assert.ok(!err, "No errors: #{err}")
+            callback()
+
+        queue.defer (callback) ->
+          owner_db.ensureSchema (err) ->
+            assert.ok(!err, "No errors: #{err}")
+            callback()
+
+        queue.await (err) ->
+          assert.ok(!err, "No errors: #{err}")
+          owner_db.hasColumn 'a_string', (err, has_column) ->
+            assert.ok(!err, "No errors: #{err}")
+            assert.ok(has_column, "Has the test column: #{has_column}")
+            done()

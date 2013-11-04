@@ -13,7 +13,8 @@ KNEX_COLUMN_OPTIONS = ['textType', 'length', 'precision', 'scale', 'value', 'val
 
 module.exports = class DatabaseTools
 
-  constructor: (@connection, @table_name, @schema) ->
+  constructor: (@connection, @table_name, @schema, options={}) ->
+    @strict = options.strict ? true
     @join_table_operations = []
     @reset()
 
@@ -22,7 +23,9 @@ module.exports = class DatabaseTools
     return @
 
   end: (callback) =>
-    return callback(new Error('end() called with no operations in progress, call createTable or editTable first')) unless @promise
+    unless @promise
+      return callback(new Error('end() called with no operations in progress, call createTable or editTable first')) if @strict
+      return callback()
     @promise.exec (err) =>
       # Always reset state
       @reset()
@@ -39,12 +42,16 @@ module.exports = class DatabaseTools
   # Create and edit table methods create a knex table instance and promise
   # Operations are carried out (ie the promise is resolved) when end() is called
   createTable: =>
-    throw Error("Table operation on #{@table_name} already in progress, call end() first") if @promise or @table
+    if @promise and @table
+      throw Error("Table operation on #{@table_name} already in progress, call end() first") if @strict
+      return @
     @promise = @connection.knex().schema.createTable(@table_name, (t) => @table = t)
     return @
 
   editTable: =>
-    throw Error("Table operation on #{@table_name} already in progress, call end() first") if @promise or @table
+    if @promise and @table
+      throw Error("Table operation on #{@table_name} already in progress, call end() first") if @strict
+      return @
     @promise = @connection.knex().schema.table(@table_name, (t) => @table = t)
     return @
 
@@ -124,6 +131,9 @@ module.exports = class DatabaseTools
 
     (callback = options; options = {}) if arguments.length is 1
 
+    return callback() if @ensuring
+    @ensuring = true
+
     @hasTable (err, table_exists) =>
       return callback(err) if err
       console.log "Ensuring table: #{@table_name} with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
@@ -133,14 +143,15 @@ module.exports = class DatabaseTools
         @addIDColumn()
         @end (err) =>
           return callback(err) if err
-          return @ensureSchemaForExistingTable(options, callback)
+          return @ensureSchemaForExistingTable(options, (err) => @ensuring = false; callback(err))
       else
-        return @ensureSchemaForExistingTable(options, callback)
+        return @ensureSchemaForExistingTable(options, (err) => @ensuring = false; callback(err))
 
   # Should only be called once the table exists - can't do column checks unless the table has been created
+  # Should only be called by @ensureSchema, sets @ensuring to false when complete
   ensureSchemaForExistingTable: (options, callback) =>
-    @editTable()
 
+    @editTable()
     queue = new Queue(1)
     queue.defer (callback) => @ensureColumn('id', 'increments', ['primary'], callback)
 
@@ -154,6 +165,7 @@ module.exports = class DatabaseTools
 
     queue.await (err) =>
       return callback(err) if err
+      @ensuring = false
       @end(callback)
 
   ensureRelation: (key, relation, callback) =>
@@ -164,6 +176,8 @@ module.exports = class DatabaseTools
         callback()
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
       relation.findOrGenerateJoinTable().db().ensureSchema(callback)
+    else
+      callback()
 
   ensureField: (key, field, callback) =>
     @hasColumn key, (err, column_exists) =>
