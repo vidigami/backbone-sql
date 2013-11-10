@@ -24,7 +24,7 @@ DatabaseTools = require './database_tools'
 
 DESTROY_BATCH_LIMIT = 1000
 
-module.exports = class SqlSync
+class SqlSync
 
   constructor: (@model_type, options={}) ->
     @[key] = value for key, value of options
