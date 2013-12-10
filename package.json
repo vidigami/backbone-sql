@@ -6,7 +6,7 @@
   "license": "MIT",
   "author": "Gwilym Humphreys (https://github.com/gwilymhumphreys)",
   "contributors": ["Kevin Malakoff (https://github.com/kmalakoff)"],
-  "repository": {"type": "git", "url": "https://bitbucket.org/vidigami/backbone-sql.git"},
+  "repository": {"type": "git", "url": "https://github.com/vidigami/backbone-sql.git"},
   "keywords": ["backbone", "orm", "backbone-orm", "sql", "mysql", "postgres", "pg", "sqlite", "sqlite3"],
   "engines": {"node": "*"},
   "scripts": {
