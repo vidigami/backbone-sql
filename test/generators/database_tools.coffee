@@ -47,51 +47,51 @@ module.exports = (options, callback) ->
           db.dropTableIfExists callback
       queue.await done
 
-    it 'Can drop a models table', (done) ->
-      db = Flat.db()
-      db.resetSchema (err) ->
-        assert.ok(!err, "No errors: #{err}")
-        db.dropTable (err) ->
-          assert.ok(!err, "No errors: #{err}")
-          db.hasTable (err, has_table) ->
-            assert.ok(!err, "No errors: #{err}")
-            assert.ok(!has_table, "Table removed: #{has_table}")
-            done()
-
-    it 'Can reset a models schema', (done) ->
-      db = Flat.db()
-      db.dropTableIfExists (err) ->
-        assert.ok(!err, "No errors: #{err}")
-        db.resetSchema (err) ->
-          assert.ok(!err, "No errors: #{err}")
-          db.hasColumn 'a_string', (err, has_column) ->
-            assert.ok(!err, "No errors: #{err}")
-            assert.ok(has_column, "Has the test column: #{has_column}")
-            done()
-
-    it 'Can ensure a models schema', (done) ->
-      db = Flat.db()
-      db.dropTableIfExists (err) ->
-        assert.ok(!err, "No errors: #{err}")
-        db.ensureSchema (err) ->
-          assert.ok(!err, "No errors: #{err}")
-          db.hasColumn 'a_string', (err, has_column) ->
-            assert.ok(!err, "No errors: #{err}")
-            assert.ok(has_column, "Has the test column: #{has_column}")
-            done()
-
-    it 'Can add a column to the db', (done) ->
-      db = Flat.db()
-      db.createTable().addColumn('test_column', 'string').end (err) ->
-        assert.ok(!err, "No errors: #{err}")
-        db.hasColumn 'test_column', (err, has_column) ->
-          assert.ok(!err, "No errors: #{err}")
-          assert.ok(has_column, "Has the test column: #{has_column}")
-          done()
-
-    it 'Can reset a single relation', (done) ->
-      console.log 'TODO'
-      done()
+#    it 'Can drop a models table', (done) ->
+#      db = Flat.db()
+#      db.resetSchema (err) ->
+#        assert.ok(!err, "No errors: #{err}")
+#        db.dropTable (err) ->
+#          assert.ok(!err, "No errors: #{err}")
+#          db.hasTable (err, has_table) ->
+#            assert.ok(!err, "No errors: #{err}")
+#            assert.ok(!has_table, "Table removed: #{has_table}")
+#            done()
+#
+#    it 'Can reset a models schema', (done) ->
+#      db = Flat.db()
+#      db.dropTableIfExists (err) ->
+#        assert.ok(!err, "No errors: #{err}")
+#        db.resetSchema (err) ->
+#          assert.ok(!err, "No errors: #{err}")
+#          db.hasColumn 'a_string', (err, has_column) ->
+#            assert.ok(!err, "No errors: #{err}")
+#            assert.ok(has_column, "Has the test column: #{has_column}")
+#            done()
+#
+#    it 'Can ensure a models schema', (done) ->
+#      db = Flat.db()
+#      db.dropTableIfExists (err) ->
+#        assert.ok(!err, "No errors: #{err}")
+#        db.ensureSchema (err) ->
+#          assert.ok(!err, "No errors: #{err}")
+#          db.hasColumn 'a_string', (err, has_column) ->
+#            assert.ok(!err, "No errors: #{err}")
+#            assert.ok(has_column, "Has the test column: #{has_column}")
+#            done()
+#
+#    it 'Can add a column to the db', (done) ->
+#      db = Flat.db()
+#      db.createTable().addColumn('test_column', 'string').end (err) ->
+#        assert.ok(!err, "No errors: #{err}")
+#        db.hasColumn 'test_column', (err, has_column) ->
+#          assert.ok(!err, "No errors: #{err}")
+#          assert.ok(has_column, "Has the test column: #{has_column}")
+#          done()
+#
+#    it 'Can reset a single relation', (done) ->
+#      console.log 'TODO'
+#      done()
 
     it 'Can ensure many to many models schemas', (done) ->
       reverse_db = Reverse.db()
@@ -130,3 +130,4 @@ module.exports = (options, callback) ->
             assert.ok(!err, "No errors: #{err}")
             assert.ok(has_column, "Has the test column: #{has_column}")
             done()
+

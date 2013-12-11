@@ -35,7 +35,9 @@ module.exports = class DatabaseTools
         for join_table_fn in @join_table_operations
           do (join_table_fn) => queue.defer (callback) =>
             join_table_fn(callback)
-        queue.await (err) => @join_table_operations = []; callback(err)
+        queue.await (err) =>
+          @join_table_operations = []
+          callback(err)
       else
         callback()
 
@@ -135,14 +137,14 @@ module.exports = class DatabaseTools
     @ensuring = true
 
     @hasTable (err, table_exists) =>
-      return callback(err) if err
+      (@ensuring = false; return callback(err)) if err
       console.log "Ensuring table: #{@table_name} with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
 
       unless table_exists
         @createTable()
         @addIDColumn()
         @end (err) =>
-          return callback(err) if err
+          (@ensuring = false; return callback(err)) if err
           return @ensureSchemaForExistingTable(options, (err) => @ensuring = false; callback(err))
       else
         return @ensureSchemaForExistingTable(options, (err) => @ensuring = false; callback(err))
@@ -155,17 +157,18 @@ module.exports = class DatabaseTools
     queue = new Queue(1)
     queue.defer (callback) => @ensureColumn('id', 'increments', ['primary'], callback)
 
-    for key, field of @schema.fields
-      do (key, field) => queue.defer (callback) =>
-        @ensureField(key, field, callback)
+    if @schema.fields
+      for key, field of @schema.fields
+        do (key, field) => queue.defer (callback) =>
+          @ensureField(key, field, callback)
 
-    for key, relation of @schema.relations
-      do (key, relation) => queue.defer (callback) =>
-        @ensureRelation(key, relation, callback)
+    if @schema.relations
+      for key, relation of @schema.relations
+        do (key, relation) => queue.defer (callback) =>
+          @ensureRelation(key, relation, callback)
 
     queue.await (err) =>
       return callback(err) if err
-      @ensuring = false
       @end(callback)
 
   ensureRelation: (key, relation, callback) =>

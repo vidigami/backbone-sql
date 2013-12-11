@@ -19,11 +19,12 @@ COMPARATORS =
 COMPARATOR_KEYS = _.keys(COMPARATORS)
 
 _appendCondition = (conditions, key, value) ->
+
   if value?.$in
     if value.$in?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
-#
-#  if value?.$nin
-#    if value.$nin?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
+
+  else if value?.$nin
+    if value.$nin?.length then conditions.where_nins.push({key: key, value: value.$nin})
 
   # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
   else if _.isObject(value) and ops_length = _.size(mongo_ops = _.pick(value, COMPARATOR_KEYS))
@@ -72,6 +73,10 @@ _appendWhere = (query, conditions, table) ->
 
   for condition in conditions.where_ins
     query.whereIn(_columnName(condition.key, table), condition.value)
+
+  for condition in conditions.where_nins
+    query.whereNotIn(_columnName(condition.key, table), condition.value)
+
   return query
 
 _appendSort = (query, sorts) ->
@@ -90,7 +95,7 @@ _appendSort = (query, sorts) ->
 module.exports = class SqlCursor extends Cursor
 
   _parseConditions: (find, cursor) ->
-    conditions = {wheres: [], where_conditionals: [], where_ins: [], related_wheres: {}, joined_wheres: {}}
+    conditions = {wheres: [], where_conditionals: [], where_ins: [], where_nins: [], related_wheres: {}, joined_wheres: {}}
     related_wheres = {}
     for key, value of find
       throw new Error "Unexpected undefined for query key '#{key}'" if _.isUndefined(value)
