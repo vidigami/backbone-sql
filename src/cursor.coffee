@@ -1,5 +1,5 @@
 ###
-  backbone-sql.js 0.5.0
+  backbone-sql.js 0.5.2
   Copyright (c) 2013 Vidigami - https://github.com/vidigami/backbone-sql
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
@@ -343,7 +343,10 @@ module.exports = class SqlCursor extends Cursor
       # Add relations to the model_json if included
       for include_key, related_json of row_relation_json
         if _.isNull(related_json.id)
-          model_json[include_key] = null
+          if @model_type.relation(include_key).type is 'hasMany'
+            model_json[include_key] = []
+          else
+            model_json[include_key] = null
         else if not _.isEmpty(related_json)
           reverse_relation_schema = @model_type.relation(include_key).reverse_relation.model_type.schema()
           related_json = @backbone_adapter.nativeToAttributes(related_json, reverse_relation_schema)
