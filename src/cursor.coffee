@@ -109,7 +109,7 @@ module.exports = class SqlCursor extends Cursor
       # Many to Many relationships may be queried on the foreign key of the join table
       else if (reverse_relation = @model_type.reverseRelation(key)) and reverse_relation.join_table
         relation = reverse_relation.reverse_relation
-        conditions.joined_wheres[relation.key] or= {wheres: [], where_conditionals: [], where_ins: []}
+        conditions.joined_wheres[relation.key] or= {wheres: [], where_conditionals: [], where_ins: [], where_nins: []}
         _appendCondition(conditions.joined_wheres[relation.key], key, value)
       else
         _appendCondition(conditions, key, value)
