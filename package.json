@@ -10,7 +10,7 @@
   "keywords": ["backbone", "orm", "backbone-orm", "sql", "mysql", "postgres", "pg", "sqlite", "sqlite3"],
   "engines": {"node": "*"},
   "scripts": {
-    "test": "npm run build; NODE_ENV=test mocha test/suite.coffee --compilers coffee:coffee-script --reporter spec --timeout 10000",
+    "test": "npm run build; NODE_ENV=test mocha test/suite.coffee --compilers coffee:coffee-script/register --reporter spec --timeout 10000",
     "build": "coffee -o lib -c src",
     "watch": "coffee -o lib -w src",
     "clean": "rm -rf lib/*",
@@ -27,7 +27,7 @@
     "backbone-rest": "0.5.x",
     "supertest": "0.7.x",
     "express": "3.2.x",
-    "pg": "2.3.x",
+    "pg": "2.11.x",
     "mysql": "2.0.x",
     "sqlite3": "2.1.x"
   },
@@ -35,8 +35,8 @@
     "underscore": "1.5.x",
     "backbone": "1.1.x",
     "backbone-orm": "0.5.x",
-    "moment": "2.4.x",
-    "inflection": "1.2.x",
-    "knex": "0.4.x"
+    "moment": "2.x.x",
+    "inflection": "1.x.x",
+    "knex": "0.5.x"
   }
 }

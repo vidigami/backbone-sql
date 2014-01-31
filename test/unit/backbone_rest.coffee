@@ -1,5 +1,6 @@
 _ = require 'underscore'
 Queue = require 'backbone-orm/lib/queue'
+express = require 'express'
 
 # DATABASE_VARIANTS = ['mysql']
 # DATABASE_VARIANTS = ['postgres']
@@ -13,6 +14,7 @@ module.exports = (options, callback) ->
       updated_at: 'DateTime'
       name: ['String', indexed: true]
     sync: require('../../lib/sync')
+    app_factory: -> app = express(); app.use(express.bodyParser()); app
 
   queue = new Queue(1)
   for variant in DATABASE_VARIANTS
