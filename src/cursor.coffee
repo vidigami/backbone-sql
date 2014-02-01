@@ -142,9 +142,9 @@ module.exports = class SqlCursor extends Cursor
       @_appendRelatedWheres(query)
       @_appendJoinedWheres(query)
       if @hasCursorQuery('$count')
-        return query.count('*').exec (err, json) => callback(null, if json.length then +json[0].aggregate else 0)
+        return query.count('*').exec (err, json) => callback(null, if json.length then +json[0].count else 0)
       else
-        return query.count(1).exec (err, json) => callback(null, if json.length then !!+json[0].aggregate else false)
+        return query.count('*').limit(1).exec (err, json) => callback(null, if json.length then !!+json[0].count else false)
 
     # only select specific fields
     if @_cursor.$values
@@ -235,7 +235,7 @@ module.exports = class SqlCursor extends Cursor
       query.count('*').exec (err, count_json) =>
         callback(null, {
           offset: @_cursor.$offset or 0
-          total_rows: if count_json.length then +count_json[0].aggregate else 0
+          total_rows: if count_json.length then +count_json[0].count else 0
           rows: json
         })
     else
