@@ -91,6 +91,10 @@ _appendSort = (query, sorts) ->
     query.orderBy(col, dir)
   return query
 
+_extractCount = (count_json) ->
+  return 0 unless count_json.length
+  count_info = count_json[0]
+  return +(count_info[if count_info.hasOwnProperty('count(*)') then 'count(*)' else 'count'])
 
 module.exports = class SqlCursor extends Cursor
 
@@ -142,9 +146,9 @@ module.exports = class SqlCursor extends Cursor
       @_appendRelatedWheres(query)
       @_appendJoinedWheres(query)
       if @hasCursorQuery('$count')
-        return query.count('*').exec (err, json) => callback(null, if json.length then +json[0].count else 0)
+        return query.count('*').exec (err, count_json) => callback(null, _extractCount(count_json))
       else
-        return query.count('*').limit(1).exec (err, json) => callback(null, if json.length then !!+json[0].count else false)
+        return query.count('*').limit(1).exec (err, count_json) => callback(null, _extractCount(count_json) > 0)
 
     # only select specific fields
     if @_cursor.$values
@@ -234,12 +238,9 @@ module.exports = class SqlCursor extends Cursor
       @_appendJoinedWheres(query)
       query.count('*').exec (err, count_json) =>
         return callback(err) if err
-
-        if count_json.length
-          total_rows = +(count_json[0][if count_json[0].hasOwnProperty('count(*)') then 'count(*)' else 'count'])
         callback(null, {
           offset: @_cursor.$offset or 0
-          total_rows: total_rows or 0
+          total_rows: _extractCount(count_json)
           rows: json
         })
     else
