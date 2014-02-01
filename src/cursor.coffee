@@ -233,9 +233,13 @@ module.exports = class SqlCursor extends Cursor
       @_appendRelatedWheres(query)
       @_appendJoinedWheres(query)
       query.count('*').exec (err, count_json) =>
+        return callback(err) if err
+
+        if count_json.length
+          total_rows = +(count_json[0][if count_json[0].hasOwnProperty('count(*)') then 'count(*)' else 'count'])
         callback(null, {
           offset: @_cursor.$offset or 0
-          total_rows: if count_json.length then +count_json[0].count else 0
+          total_rows: total_rows or 0
           rows: json
         })
     else
