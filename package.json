@@ -1,6 +1,6 @@
 {
   "name": "backbone-sql",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "PostgreSQL, MySQL, and SQLite3 storage for BackboneORM",
   "main": "./lib/index.js",
   "license": "MIT",

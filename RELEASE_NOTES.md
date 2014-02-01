@@ -1,5 +1,14 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
+### 0.5.5
+* Updated to latest Knex (still outstanding problems with consistent Date support in Knex - not all mysql sqlite tests passing for dates)
+
+### 0.5.4
+* $nin bug fix
+
+### 0.5.3
+* $nin support
+
 ### 0.5.2
 * Handle null hasMany relations in _joinedResultsToJSON
 
