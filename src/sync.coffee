@@ -1,5 +1,5 @@
 ###
-  backbone-sql.js 0.5.6
+  backbone-sql.js 0.5.7
   Copyright (c) 2013 Vidigami - https://github.com/vidigami/backbone-sql
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
@@ -102,7 +102,7 @@ class SqlSync
     return if @is_initialized; @is_initialized = true
 
     @schema.initialize()
-    throw new Error("Missing url for model") unless url = _.result(@model_type.prototype, 'url')
+    throw new Error("Missing url for model") unless url = _.result(new @model_type, 'url')
     @connect(url)
 
   connect: (url) ->

@@ -1,5 +1,8 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
+### 0.5.7
+* Compatability fix for Backbone 1.1.1
+
 ### 0.5.6
 * Knex bug fix for count
 * Lock Backbone.js to 1.1.0 until new release compatibility issues fixed
