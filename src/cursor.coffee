@@ -1,5 +1,5 @@
 ###
-  backbone-sql.js 0.5.5
+  backbone-sql.js 0.5.6
   Copyright (c) 2013 Vidigami - https://github.com/vidigami/backbone-sql
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
@@ -92,7 +92,7 @@ _appendSort = (query, sorts) ->
   return query
 
 _extractCount = (count_json) ->
-  return 0 unless count_json.length
+  return 0 unless count_json?.length
   count_info = count_json[0]
   return +(count_info[if count_info.hasOwnProperty('count(*)') then 'count(*)' else 'count'])
 

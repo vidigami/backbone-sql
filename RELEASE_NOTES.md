@@ -1,5 +1,9 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
+### 0.5.6
+* Knex bug fix for count
+* Lock Backbone.js to 1.1.0 until new release compatibility issues fixed
+
 ### 0.5.5
 * Updated to latest Knex (still outstanding problems with consistent Date support in Knex - not all mysql sqlite tests passing for dates)
 
