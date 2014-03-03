@@ -1,5 +1,8 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
+### 0.5.8
+* Fix for $ne: null in find queries
+
 ### 0.5.7
 * Compatability fix for Backbone 1.1.1
 
