@@ -45,11 +45,16 @@ _appendCondition = (conditions, key, value) ->
 _columnName = (col, table) -> if table then "#{table}.#{col}" else col
 
 _appendConditionalWhere = (query, key, condition, table, compound) ->
+  whereMethod = if compound then 'andWhere' else 'where'
   if condition.operator is '!='
-    query[if compound then 'andWhere' else 'where'] ->
-      @where(_columnName(key, table), condition.operator, condition.value).orWhereNull(_columnName(key, table))
+    # != should function like $ne, including nulls
+    query[whereMethod] ->
+      if _.isNull(condition.value)
+        @whereNotNull(_columnName(key, table))
+      else
+        @where(_columnName(key, table), condition.operator, condition.value).orWhereNull(_columnName(key, table))
   else
-    query[if compound then 'andWhere' else 'where'](_columnName(key, table), condition.operator, condition.value)
+    query[whereMethod](_columnName(key, table), condition.operator, condition.value)
 
 _appendWhere = (query, conditions, table) ->
   for condition in conditions.wheres
