@@ -21,22 +21,21 @@
   },
   "devDependencies": {
     "coffee-script": "*",
-    "codo": "1.7.x",
     "mocha": "*",
     "powerset": "0.0.x",
     "backbone-rest": "0.5.x",
-    "supertest": "0.7.x",
-    "express": "3.2.x",
-    "pg": "2.11.x",
-    "mysql": "2.0.x",
-    "sqlite3": "2.1.x"
+    "supertest": "*",
+    "express": "3.x",
+    "pg": "3.x",
+    "mysql": "2.x",
+    "sqlite3": "2.x"
   },
   "dependencies": {
-    "underscore": "1.5.x",
-    "backbone": ">=1.0.0",
+    "underscore": "1.x",
+    "backbone": "1.x",
     "backbone-orm": "0.5.x",
-    "moment": "2.x.x",
-    "inflection": "1.x.x",
+    "moment": "2.x",
+    "inflection": "1.x",
     "knex": "0.5.x"
   }
 }
