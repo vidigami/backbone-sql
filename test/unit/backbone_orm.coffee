@@ -13,6 +13,9 @@ module.exports = (options, callback) ->
       created_at: 'DateTime'
       updated_at: 'DateTime'
       name: ['String', indexed: true]
+      # TODO: json only works on the postgres backend
+      json_data: 'json'  # for flat/cursor
+      is_base: 'Boolean'  # for relational/self
     sync: require('../../lib/sync')
 
   queue = new Queue(1)
