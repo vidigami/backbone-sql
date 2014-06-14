@@ -21,18 +21,30 @@ module.exports = class DatabaseTools
 
   resetSchema: (options, callback) =>
     [callback, options] = [options, {}] if arguments.length is 1
+    return callback() if @resetting
+    @resetting = true
 
     @connection.knex().schema.dropTableIfExists(@table_name).exec (err) =>
       return callback(err) if err
-      @ensureSchema(options, callback)
+
+      queue = new Queue(1)
+
+      for key, relation of @schema.relations
+        do (key, relation) => queue.defer (callback) =>
+          if !relation.isVirtual() and relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
+            relation.findOrGenerateJoinTable().resetSchema(callback)
+          else
+            callback()
+
+      queue.await (err) =>
+        @resetting = false; return callback(err) if err
+        @ensureSchema(options, callback)
 
   # Ensure that the schema is reflected correctly in the database
   # Will create a table and add columns as required
   # Will not remove columns
   ensureSchema: (options, callback) =>
     [callback, options] = [options, {}] if arguments.length is 1
-
-    console.log "ensureSchema START #{@table_name}"
 
     return callback() if @ensuring
     @ensuring = true
@@ -53,31 +65,22 @@ module.exports = class DatabaseTools
     for key, relation of @schema.relations
       do (key, relation) => queue.defer (callback) => @ensureRelation(key, relation, callback)
 
-    queue.await (err) =>
-      console.log "ensureSchema END #{@table_name}"
-
-      @ensuring = false
-      return callback(err) if err
+    queue.defer (callback) =>
       return callback() unless @join_table_operations.length
 
-      queue = new Queue(1)
+      join_queue = new Queue(1)
       for join_table_fn in @join_table_operations.splice(0, @join_table_operations.length)
-        do (join_table_fn) => queue.defer (callback) => join_table_fn(callback)
-      queue.await callback
+        do (join_table_fn) => join_queue.defer (callback) => join_table_fn(callback)
+      join_queue.await callback
+
+    queue.await (err) => @ensuring = false; callback(err)
 
   # Create and edit table methods create a knex table instance
   createTable: (callback) =>
     throw new Error "createTable requires a callback" unless _.isFunction(callback)
 
     callback = debounceCallback(callback)
-    @connection.knex().schema.createTable(@table_name, (t) => callback(null, t)).exec(callback)
-    return @
-
-  editTable: (callback) =>
-    throw new Error "editTable requires a callback" unless _.isFunction(callback)
-
-    callback = debounceCallback(callback)
-    @connection.knex().schema.table(@table_name, (t) => callback(null, t)).exec(callback)
+    @connection.knex().schema.createTable(@table_name).exec(callback)
     return @
 
   addField: (key, field, callback) =>
@@ -86,8 +89,7 @@ module.exports = class DatabaseTools
     return @
 
   addColumn: (key, type, options={}, callback) =>
-    @editTable (err, table) =>
-      return callback(err) if err
+    @connection.knex().schema.table(@table_name, (table) =>
       column_args = [key]
 
       # Assign column specific arguments
@@ -106,7 +108,7 @@ module.exports = class DatabaseTools
       column.notNullable() if options.nullable is false
       column.index() if options.indexed
       column.unique() if options.unique
-      callback()
+    ).exec(callback)
 
     return @
 
@@ -116,14 +118,8 @@ module.exports = class DatabaseTools
       @addColumn(relation.foreign_key, 'integer', {nullable: true, indexed: true}, callback)
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
       @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().db().ensureSchema(callback))
-    return @
-
-  resetRelation: (key, relation, callback) =>
-    return callback() if relation.isVirtual() # skip virtual
-    if relation.type is 'belongsTo'
-      @addColumn(relation.foreign_key, 'integer', {nullable: true, indexed: true}, callback)
-    else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
-      @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback))
+    else
+      callback()
     return @
 
   ensureRelation: (key, relation, callback) =>
@@ -139,6 +135,7 @@ module.exports = class DatabaseTools
       relation.findOrGenerateJoinTable().db().ensureSchema(callback)
     else
       callback()
+    return @
 
   ensureField: (key, field, callback) =>
     @hasColumn key, (err, column_exists) =>
