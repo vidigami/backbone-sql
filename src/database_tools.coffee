@@ -100,14 +100,18 @@ module.exports = class DatabaseTools
       else
         column_args[1] = _.values(constructor_options)[0]
 
-    column = table[column_info.type].apply(table, column_args)
+    table[column_info.type].apply(table, column_args)
+    @updateColumn(table, column_info)
+    return
+
+  # TODO: handle column type changes
+  updateColumn: (table, column_info) =>
+    column = _.find(table.columns, (col) -> col.name is column_info.key)
     column.primary() if column_info.options.primary
-    column.notNullable() if column_info.options.nullable is false
+    column.nullable() if !!column_info.options.nullable
     column.index() if column_info.options.indexed
     column.unique() if column_info.options.unique
     return
-
-  updateColumn: (table, column_info) =>
 
   # knex method wrappers
   hasColumn: (column, callback) => @connection.knex().schema.hasColumn(@table_name, column).exec callback
