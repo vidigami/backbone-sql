@@ -20,15 +20,6 @@ module.exports = class DatabaseTools
     @strict = options.strict ? true
     @join_table_operations = []
 
-  end: (callback) =>
-    return callback()
-
-    return callback() unless @join_table_operations.length
-    queue = new Queue(1)
-    for join_table_fn in @join_table_operations.splice(0, @join_table_operations.length)
-      do (join_table_fn) => queue.defer (callback) => join_table_fn(callback)
-    queue.await callback
-
   # Create and edit table methods create a knex table instance
   createTable: (callback) =>
     throw new Error "createTable requires a callback" unless _.isFunction(callback)
@@ -50,11 +41,8 @@ module.exports = class DatabaseTools
     return @
 
   addColumn: (key, type, options={}, callback) =>
-    console.log 200
     @editTable (err, table) =>
-      console.log 201
       return callback(err) if err
-      console.log 202
       column_args = [key]
 
       # Assign column specific arguments
@@ -68,16 +56,11 @@ module.exports = class DatabaseTools
         else
           column_args[1] = _.values(constructor_options)[0]
 
-      console.log "203", table[type], type, column_args
-
-      column = table[type].apply(column_args)
-      console.log 204
-
+      column = table[type].apply(table, column_args)
+      column.primary() if options.primary
       column.notNullable() if options.nullable is false
       column.index() if options.indexed
       column.unique() if options.unique
-
-      console.log 205
       callback()
 
     return @
@@ -117,28 +100,38 @@ module.exports = class DatabaseTools
     queue = new Queue(1)
     queue.defer (callback) =>
       @hasTable (err, table_exists) =>
-        console.log "hasTable", err, table_exists
         return callback(err) if err
         console.log "Ensuring table: #{@table_name} (exists: #{!!table_exists}) with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
         return callback() if table_exists
         @createTable callback
 
-    queue.defer (callback) => console.log 1; @ensureColumn('id', 'increments', ['primary'], callback)
+    queue.defer (callback) => @ensureColumn('id', 'increments', {primary: true, indexed: true}, callback)
 
     for key, field of @schema.fields
-      do (key, field) => queue.defer (callback) => console.log 2; @ensureField(key, field, callback)
+      do (key, field) => queue.defer (callback) => @ensureField(key, field, callback)
 
     for key, relation of @schema.relations
-      do (key, relation) => queue.defer (callback) => console.log 3; @ensureRelation(key, relation, callback)
+      do (key, relation) => queue.defer (callback) => @ensureRelation(key, relation, callback)
 
-    queue.await (err) => @ensuring = false; callback(err) if err; @end(callback)
+    queue.await (err) =>
+      @ensuring = false
+      return callback(err) if err
+      return callback() unless @join_table_operations.length
+
+      queue = new Queue(1)
+      for join_table_fn in @join_table_operations.splice(0, @join_table_operations.length)
+        do (join_table_fn) => queue.defer (callback) => join_table_fn(callback)
+      queue.await callback
 
   ensureRelation: (key, relation, callback) =>
     if relation.type is 'belongsTo'
       @hasColumn relation.foreign_key, (err, column_exists) =>
         return callback(err) if err
-        @addRelation(key, relation) unless column_exists
-        callback()
+        if column_exists
+          # TODO: update indices
+          callback()
+        else
+          @addRelation(key, relation, callback)
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
       relation.findOrGenerateJoinTable().db().ensureSchema(callback)
     else
@@ -154,21 +147,16 @@ module.exports = class DatabaseTools
         @addField(key, field, callback)
 
   ensureColumn: (key, type, options, callback) =>
-    console.log 100
     @hasColumn key, (err, column_exists) =>
-      console.log 101
       return callback(err) if err
-      console.log 102
       if column_exists
-        console.log 103
         # TODO: update indices
         callback()
       else
-        console.log 104
         @addColumn(key, type, options, callback)
 
   # knex method wrappers
-  hasColumn: (column, callback) => @connection.knex().schema.hasColumn(@table_name, column).exec (err, has) -> console.log "err, has", column, err, has; callback(err, has)
+  hasColumn: (column, callback) => @connection.knex().schema.hasColumn(@table_name, column).exec callback
   hasTable: (callback) => @connection.knex().schema.hasTable(@table_name).exec callback
   dropTable: (callback) => @connection.knex().schema.dropTable(@table_name).exec callback
   dropTableIfExists: (callback) => @connection.knex().schema.dropTableIfExists(@table_name).exec callback
