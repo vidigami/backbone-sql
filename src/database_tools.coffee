@@ -19,12 +19,6 @@ KNEX_TYPES =
   datetime: 'dateTime'
   biginteger: 'bigInteger'
 
-knexColumnBuilder = (table, key) ->
-  if table.columns
-    return _.find(table.columns, (col) -> col.name is key)
-  else
-    return _.find(table._statements, (col) -> col.grouping is 'columns' and col.builder._args?[0] is key)?.builder
-
 module.exports = class DatabaseTools
 
   constructor: (@connection, @table_name, @schema, options={}) ->
@@ -108,18 +102,17 @@ module.exports = class DatabaseTools
       else
         column_args[1] = _.values(constructor_options)[0]
 
-    table[column_info.type].apply(table, column_args)
+    column = table[column_info.type].apply(table, column_args)
+    column.nullable() if !!column_info.options.nullable
+    column.primary() if !!column_info.options.primary
+
     @updateColumn(table, column_info)
     return
 
-  # TODO: handle column type changes
+  # TODO: handle column type changes and figure out how to update columns properly
   updateColumn: (table, column_info) =>
-    column = knexColumnBuilder(table, column_info.key)
-
-    column.primary() if column_info.options.primary
-    column.nullable() if !!column_info.options.nullable
-    column.index() if column_info.options.indexed
-    column.unique() if column_info.options.unique
+    table.index(column_info.key) if column_info.options.index
+    table.unique(column_info.key) if column_info.options.unique
     return
 
   # knex method wrappers
