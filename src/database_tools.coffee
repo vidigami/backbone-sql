@@ -62,30 +62,40 @@ module.exports = class DatabaseTools
       return callback(err) if err
       console.log "Ensuring table: #{@table_name} (exists: #{!!table_exists}) with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
 
-      columns = {add: [], update: []}
+      columns = []
 
       # look up the add or update columns
       # NOTE: Knex requires the add an update operations to be performed within the table function.
       # This means that hasColumn being asynchronous requires the check to be done before calling the table function
-      queue = new Queue()
       for key in @schema.columns()
-        do (key) => queue.defer (callback) =>
-          if field = @schema.fields[key]
-            column = {key: key, type: field.type.toLowerCase(), options: field}
-            column.type = override if override = KNEX_TYPES[column.type]
-          else if key is 'id'
-            column = {key: key, type: 'increments', options: {indexed: true, primary: true}}
-          else
-            column = {key: key, type: 'integer', options: {indexed: true, nullable: true}}
-          (columns.add.push(column); return callback()) unless table_exists
-          @hasColumn key, (err, exists) =>
-            return callback(err) if err
-            columns[if exists then 'update' else 'add'].push(column); return callback()
+        if field = @schema.fields[key]
+          type = override if override = KNEX_TYPES[type = field.type.toLowerCase()]
+          columns.push({key: key, type: type, options: field})
+        else if key is 'id'
+          columns.push({key: key, type: 'increments', options: {indexed: true, primary: true}})
 
-      @connection.knex().schema[if table_exists then 'table' else 'createTable'](@table_name, (table) =>
-        @addColumn(table, column) for column in columns.add
-        @updateColumn(table, column) for column in columns.update
-      ).exec(callback)
+      for key, relation of @schema.relations when (relation.type is 'belongsTo') and not relation.isVirtual() and not relation.isEmbedded()
+        do (key, relation) => columns.push({key: relation.foreign_key, type: 'integer', options: {indexed: true, nullable: true}})
+
+      group = (columns, callback) =>
+        return callback(null, {add: columns, update: []}) unless table_exists
+
+        result = {add: [], update: []}
+
+        queue = new Queue()
+        for column_info in columns
+          do (column_info) => queue.defer (callback) =>
+            @hasColumn column_info.key, (err, exists) =>
+              return callback(err) if err
+              (if exists then result.update else result.add).push(column_info); return callback()
+        queue.await (err) => callback(err, result)
+
+      group columns, (err, result) =>
+        return callback(err) if err
+        @connection.knex().schema[if table_exists then 'table' else 'createTable'](@table_name, (table) =>
+          @addColumn(table, column_info) for column_info in result.add
+          @updateColumn(table, column_info) for column_info in result.update
+        ).exec(callback)
     return
 
   addColumn: (table, column_info) =>
@@ -105,14 +115,15 @@ module.exports = class DatabaseTools
     column = table[column_info.type].apply(table, column_args)
     column.nullable() if !!column_info.options.nullable
     column.primary() if !!column_info.options.primary
+    column.index() if !!column_info.options.indexed
+    column.unique() if !!column_info.options.unique
 
-    @updateColumn(table, column_info)
     return
 
   # TODO: handle column type changes and figure out how to update columns properly
   updateColumn: (table, column_info) =>
-    table.index(column_info.key) if column_info.options.index
-    table.unique(column_info.key) if column_info.options.unique
+    # table.index(column_info.key) if column_info.options.indexed # fails if the column already exists
+    # table.unique(column_info.key) if column_info.options.unique
     return
 
   # knex method wrappers
