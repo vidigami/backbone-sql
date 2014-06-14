@@ -14,7 +14,7 @@ module.exports = (options, callback) ->
       updated_at: 'DateTime'
       name: ['String', indexed: true]
       # TODO: json only works on the postgres backend
-      json_data: 'json'  # for flat/cursor
+      json_data: 'JSON'  # for flat/cursor
       is_base: 'Boolean'  # for relational/self
     sync: require('../../lib/sync')
 

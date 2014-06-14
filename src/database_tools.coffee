@@ -5,7 +5,6 @@
 ###
 
 _ = require 'underscore'
-inflection = require 'inflection'
 Knex = require 'knex'
 Queue = require 'backbone-orm/lib/queue'
 KNEX_COLUMN_OPTIONS = ['textType', 'length', 'precision', 'scale', 'value', 'values']
@@ -16,11 +15,19 @@ KNEX_SKIP = ['The five argument join']
 _deprecate = knex_helpers.deprecate
 knex_helpers.deprecate = (msg) -> _deprecate.apply(@, _.toArray(arguments)) if msg.indexOf(KNEX_SKIP) isnt 0
 
+KNEX_TYPES =
+  datetime: 'dateTime'
+  biginteger: 'bigInteger'
+
+knexColumnBuilder = (table, key) ->
+  if table.columns
+    return _.find(table.columns, (col) -> col.name is key)
+  else
+    return _.find(table._statements, (col) -> col.grouping is 'columns' and col.builder._args?[0] is key)?.builder
+
 module.exports = class DatabaseTools
 
   constructor: (@connection, @table_name, @schema, options={}) ->
-    @strict = options.strict ? true
-    @join_table_columns = []
 
   resetSchema: (options, callback) =>
     [callback, options] = [options, {}] if arguments.length is 1
@@ -70,7 +77,8 @@ module.exports = class DatabaseTools
       for key in @schema.columns()
         do (key) => queue.defer (callback) =>
           if field = @schema.fields[key]
-            column = {key: key, type: "#{field.type[0].toLowerCase()}#{field.type.slice(1)}", options: field}
+            column = {key: key, type: field.type.toLowerCase(), options: field}
+            column.type = override if override = KNEX_TYPES[column.type]
           else if key is 'id'
             column = {key: key, type: 'increments', options: {indexed: true, primary: true}}
           else
@@ -106,7 +114,8 @@ module.exports = class DatabaseTools
 
   # TODO: handle column type changes
   updateColumn: (table, column_info) =>
-    column = _.find(table.columns, (col) -> col.name is column_info.key)
+    column = knexColumnBuilder(table, column_info.key)
+
     column.primary() if column_info.options.primary
     column.nullable() if !!column_info.options.nullable
     column.index() if column_info.options.indexed
