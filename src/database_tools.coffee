@@ -10,8 +10,11 @@ Knex = require 'knex'
 Queue = require 'backbone-orm/lib/queue'
 KNEX_COLUMN_OPTIONS = ['textType', 'length', 'precision', 'scale', 'value', 'values']
 
-debounceCallback = (callback) ->
-  return debounced_callback = -> return if debounced_callback.was_called; debounced_callback.was_called = true; callback.apply(null, Array.prototype.slice.call(arguments, 0))
+# TODO: when knex fixes join operator, remove this deprecation warning
+knex_helpers = require 'knex/lib/helpers'
+KNEX_SKIP = ['The five argument join']
+_deprecate = knex_helpers.deprecate
+knex_helpers.deprecate = (msg) -> _deprecate.apply(@, _.toArray(arguments)) if msg.indexOf(KNEX_SKIP) isnt 0
 
 module.exports = class DatabaseTools
 
@@ -78,9 +81,7 @@ module.exports = class DatabaseTools
   # Create and edit table methods create a knex table instance
   createTable: (callback) =>
     throw new Error "createTable requires a callback" unless _.isFunction(callback)
-
-    callback = debounceCallback(callback)
-    @connection.knex().schema.createTable(@table_name).exec(callback)
+    @connection.knex().schema.createTable(@table_name, ->).exec(callback)
     return @
 
   addField: (key, field, callback) =>
