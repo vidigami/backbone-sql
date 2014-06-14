@@ -42,9 +42,7 @@ module.exports = (options, callback) ->
     beforeEach (done) ->
       queue = new Queue(1)
       for model_type in [Flat, Reverse, Owner]
-        do (model_type) -> queue.defer (callback) ->
-          db = model_type.db()
-          db.dropTableIfExists callback
+        do (model_type) -> queue.defer (callback) -> model_type.db().dropTableIfExists callback
       queue.await done
 
 #    it 'Can drop a models table', (done) ->
@@ -104,10 +102,10 @@ module.exports = (options, callback) ->
           assert.ok(!err, "No errors: #{err}")
           callback()
 
-      drop_queue.defer (callback) ->
-        owner_db.dropTableIfExists (err) ->
-          assert.ok(!err, "No errors: #{err}")
-          callback()
+      # drop_queue.defer (callback) ->
+      #   owner_db.dropTableIfExists (err) ->
+      #     assert.ok(!err, "No errors: #{err}")
+      #     callback()
 
       drop_queue.await (err) ->
         assert.ok(!err, "No errors: #{err}")
@@ -117,17 +115,17 @@ module.exports = (options, callback) ->
         queue.defer (callback) ->
           reverse_db.ensureSchema (err) ->
             assert.ok(!err, "No errors: #{err}")
-            callback()
-
-        queue.defer (callback) ->
-          owner_db.ensureSchema (err) ->
-            assert.ok(!err, "No errors: #{err}")
-            callback()
-
-        queue.await (err) ->
-          assert.ok(!err, "No errors: #{err}")
-          owner_db.hasColumn 'a_string', (err, has_column) ->
-            assert.ok(!err, "No errors: #{err}")
-            assert.ok(has_column, "Has the test column: #{has_column}")
             done()
+            # callback()
 
+        # queue.defer (callback) ->
+        #   owner_db.ensureSchema (err) ->
+        #     assert.ok(!err, "No errors: #{err}")
+        #     callback()
+
+        # queue.await (err) ->
+        #   assert.ok(!err, "No errors: #{err}")
+        #   owner_db.hasColumn 'a_string', (err, has_column) ->
+        #     assert.ok(!err, "No errors: #{err}")
+        #     assert.ok(has_column, "Has the test column: #{has_column}")
+        #     done()
