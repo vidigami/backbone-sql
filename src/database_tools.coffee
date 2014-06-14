@@ -8,7 +8,6 @@ _ = require 'underscore'
 inflection = require 'inflection'
 Knex = require 'knex'
 Queue = require 'backbone-orm/lib/queue'
-KNEX_COLUMN_OPERATORS = ['indexed', 'nullable', 'unique']
 KNEX_COLUMN_OPTIONS = ['textType', 'length', 'precision', 'scale', 'value', 'values']
 
 debounceCallback = (callback) ->
@@ -19,6 +18,52 @@ module.exports = class DatabaseTools
   constructor: (@connection, @table_name, @schema, options={}) ->
     @strict = options.strict ? true
     @join_table_operations = []
+
+  resetSchema: (options, callback) =>
+    [callback, options] = [options, {}] if arguments.length is 1
+
+    @connection.knex().schema.dropTableIfExists(@table_name).exec (err) =>
+      return callback(err) if err
+      @ensureSchema(options, callback)
+
+  # Ensure that the schema is reflected correctly in the database
+  # Will create a table and add columns as required
+  # Will not remove columns
+  ensureSchema: (options, callback) =>
+    [callback, options] = [options, {}] if arguments.length is 1
+
+    console.log "ensureSchema START #{@table_name}"
+
+    return callback() if @ensuring
+    @ensuring = true
+
+    queue = new Queue(1)
+    queue.defer (callback) =>
+      @hasTable (err, table_exists) =>
+        return callback(err) if err
+        console.log "Ensuring table: #{@table_name} (exists: #{!!table_exists}) with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
+        return callback() if table_exists
+        @createTable callback
+
+    queue.defer (callback) => @ensureColumn('id', 'increments', {primary: true, indexed: true}, callback)
+
+    for key, field of @schema.fields
+      do (key, field) => queue.defer (callback) => @ensureField(key, field, callback)
+
+    for key, relation of @schema.relations
+      do (key, relation) => queue.defer (callback) => @ensureRelation(key, relation, callback)
+
+    queue.await (err) =>
+      console.log "ensureSchema END #{@table_name}"
+
+      @ensuring = false
+      return callback(err) if err
+      return callback() unless @join_table_operations.length
+
+      queue = new Queue(1)
+      for join_table_fn in @join_table_operations.splice(0, @join_table_operations.length)
+        do (join_table_fn) => queue.defer (callback) => join_table_fn(callback)
+      queue.await callback
 
   # Create and edit table methods create a knex table instance
   createTable: (callback) =>
@@ -68,7 +113,7 @@ module.exports = class DatabaseTools
   addRelation: (key, relation, callback) =>
     return callback() if relation.isVirtual() # skip virtual
     if relation.type is 'belongsTo'
-      @addColumn(relation.foreign_key, 'integer', ['nullable', 'index'], callback)
+      @addColumn(relation.foreign_key, 'integer', {nullable: true, indexed: true}, callback)
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
       @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().db().ensureSchema(callback))
     return @
@@ -76,52 +121,10 @@ module.exports = class DatabaseTools
   resetRelation: (key, relation, callback) =>
     return callback() if relation.isVirtual() # skip virtual
     if relation.type is 'belongsTo'
-      @addColumn(relation.foreign_key, 'integer', ['nullable', 'index'], callback)
+      @addColumn(relation.foreign_key, 'integer', {nullable: true, indexed: true}, callback)
     else if relation.type is 'hasMany' and relation.reverse_relation.type is 'hasMany'
       @join_table_operations.push((callback) -> relation.findOrGenerateJoinTable().resetSchema(callback))
     return @
-
-  resetSchema: (options, callback) =>
-    [callback, options] = [options, {}] if arguments.length is 1
-
-    @connection.knex().schema.dropTableIfExists(@table_name).exec (err) =>
-      return callback(err) if err
-      @ensureSchema(options, callback)
-
-  # Ensure that the schema is reflected correctly in the database
-  # Will create a table and add columns as required
-  # Will not remove columns
-  ensureSchema: (options, callback) =>
-    [callback, options] = [options, {}] if arguments.length is 1
-
-    return callback() if @ensuring
-    @ensuring = true
-
-    queue = new Queue(1)
-    queue.defer (callback) =>
-      @hasTable (err, table_exists) =>
-        return callback(err) if err
-        console.log "Ensuring table: #{@table_name} (exists: #{!!table_exists}) with fields: '#{_.keys(@schema.fields).join(', ')}' and relations: '#{_.keys(@schema.relations).join(', ')}'" if options.verbose
-        return callback() if table_exists
-        @createTable callback
-
-    queue.defer (callback) => @ensureColumn('id', 'increments', {primary: true, indexed: true}, callback)
-
-    for key, field of @schema.fields
-      do (key, field) => queue.defer (callback) => @ensureField(key, field, callback)
-
-    for key, relation of @schema.relations
-      do (key, relation) => queue.defer (callback) => @ensureRelation(key, relation, callback)
-
-    queue.await (err) =>
-      @ensuring = false
-      return callback(err) if err
-      return callback() unless @join_table_operations.length
-
-      queue = new Queue(1)
-      for join_table_fn in @join_table_operations.splice(0, @join_table_operations.length)
-        do (join_table_fn) => queue.defer (callback) => join_table_fn(callback)
-      queue.await callback
 
   ensureRelation: (key, relation, callback) =>
     if relation.type is 'belongsTo'
