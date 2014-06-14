@@ -1,5 +1,8 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
+### 0.5.10
+* Simplified database_tools and made compatible with the latest knex.
+
 ### 0.5.9
 * Update knex due to bluebird dependency breaking.
 
