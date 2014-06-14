@@ -294,7 +294,7 @@ module.exports = class SqlCursor extends Cursor
       unless key in _.keys(@_conditions.related_wheres) or (@include_keys and key in @include_keys)
         from_key = "#{@model_type.tableName()}.id"
         to_key = "#{relation.join_table.tableName()}.#{relation.foreign_key}"
-        query.join(relation.join_table.tableName(), from_key, to_key, 'left outer')
+        query.join(relation.join_table.tableName(), from_key, '=', to_key, 'left outer')
       _appendWhere(query, joined_wheres, relation.join_table.tableName())
 
   # TODO: look at optimizing without left outer joins everywhere
@@ -307,12 +307,12 @@ module.exports = class SqlCursor extends Cursor
       # Join the from model to the pivot table
       from_key = "#{@model_type.tableName()}.id"
       pivot_to_key = "#{pivot_table}.#{relation.foreign_key}"
-      query.join(pivot_table, from_key, pivot_to_key, 'left outer')
+      query.join(pivot_table, from_key, '=', pivot_to_key, 'left outer')
 
       # Then to the to model's table
       pivot_from_key = "#{pivot_table}.#{relation.reverse_relation.foreign_key}"
       to_key = "#{related_model_type.tableName()}.id"
-      query.join(related_model_type.tableName(), pivot_from_key, to_key, 'left outer')
+      query.join(related_model_type.tableName(), pivot_from_key, '=', to_key, 'left outer')
     else
       if relation.type is 'belongsTo'
         from_key = "#{@model_type.tableName()}.#{relation.foreign_key}"
@@ -320,7 +320,7 @@ module.exports = class SqlCursor extends Cursor
       else
         from_key = "#{@model_type.tableName()}.id"
         to_key = "#{related_model_type.tableName()}.#{relation.foreign_key}"
-      query.join(related_model_type.tableName(), from_key, to_key, 'left outer')
+      query.join(related_model_type.tableName(), from_key, '=', to_key, 'left outer')
 
   # Rows returned from a join query need to be un-merged into the correct json format
   _joinedResultsToJSON: (raw_json) ->
