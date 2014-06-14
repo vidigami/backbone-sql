@@ -81,7 +81,10 @@ module.exports = class DatabaseTools
   # Create and edit table methods create a knex table instance
   createTable: (callback) =>
     throw new Error "createTable requires a callback" unless _.isFunction(callback)
-    @connection.knex().schema.createTable(@table_name, ->).exec(callback)
+    @connection.knex().schema.createTable(@table_name, (table) =>
+      # NOTE: work around for creating an empty table
+      @addColumn('id', 'increments', {primary: true, indexed: true}, table)
+    ).exec(callback)
     return @
 
   addField: (key, field, callback) =>
@@ -89,8 +92,8 @@ module.exports = class DatabaseTools
     @addColumn(key, type, field, callback)
     return @
 
-  addColumn: (key, type, options={}, callback) =>
-    @connection.knex().schema.table(@table_name, (table) =>
+  addColumn: (key, type, options={}, table_or_callback) =>
+    addField = (table) =>
       column_args = [key]
 
       # Assign column specific arguments
@@ -109,7 +112,12 @@ module.exports = class DatabaseTools
       column.notNullable() if options.nullable is false
       column.index() if options.indexed
       column.unique() if options.unique
-    ).exec(callback)
+
+    # NOTE: work around for creating an empty table
+    if _.isFunction(table_or_callback)
+      @connection.knex().schema.table(@table_name, addField).exec(table_or_callback)
+    else
+      addField(table_or_callback)
 
     return @
 
