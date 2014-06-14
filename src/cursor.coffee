@@ -369,7 +369,7 @@ module.exports = class SqlCursor extends Cursor
     return json
 
   _prefixColumns: (model_type, fields) ->
-    columns = if fields then _.clone(fields) else model_type.schema().allColumns()
+    columns = if fields then _.clone(fields) else model_type.schema().columns()
     columns.push('id') unless 'id' in columns
     return ("#{model_type.tableName()}.#{col} as #{@_tablePrefix(model_type)}#{col}" for col in columns)
 
