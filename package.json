@@ -30,7 +30,7 @@
   "devDependencies": {
     "coffee-script": "*",
     "mocha": "*",
-    "powerset": "0.0.x",
+    "chai": "*",
     "backbone-rest": "git+https://github.com/vidigami/backbone-rest#develop",
     "supertest": "*",
     "express": "3.x",
@@ -42,7 +42,6 @@
     "underscore": "1.x",
     "backbone": "1.x",
     "backbone-orm": "git+https://github.com/vidigami/backbone-orm#develop",
-    "moment": "2.x",
     "inflection": "1.x",
     "knex": "0.6.x"
   }
