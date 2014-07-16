@@ -8,7 +8,7 @@ util = require 'util'
 _ = require 'underscore'
 Knex = require 'knex'
 
-Cursor = require 'backbone-orm/lib/cursor'
+{Cursor} = (require 'backbone-orm').sync
 
 COMPARATORS =
   $lt: '<'

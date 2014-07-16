@@ -6,7 +6,7 @@
 
 _ = require 'underscore'
 Knex = require 'knex'
-Queue = require 'backbone-orm/lib/queue'
+{Queue} = require 'backbone-orm'
 KNEX_COLUMN_OPTIONS = ['textType', 'length', 'precision', 'scale', 'value', 'values']
 
 # TODO: when knex fixes join operator, remove this deprecation warning

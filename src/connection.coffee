@@ -7,8 +7,8 @@
 _ = require 'underscore'
 Knex = require 'knex'
 
-ConnectionPool = require 'backbone-orm/lib/connection_pool'
-DatabaseUrl = require 'backbone-orm/lib/database_url'
+BackboneORM = require 'backbone-orm'
+{Queue, DatabaseURL, ConnectionPool} = BackboneORM
 
 PROTOCOLS =
   'mysql:': 'mysql', 'mysql2:': 'mysql'
@@ -21,9 +21,9 @@ class KnexConnection
 
 module.exports = class Connection
   constructor: (full_url) ->
-    database_url = new DatabaseUrl(full_url)
+    database_url = new DatabaseURL(full_url)
     @url = database_url.format({exclude_table: true, exclude_query: true}) # pool the raw endpoint without the table
-    return if @knex_connection = ConnectionPool.get(@url) # found in pool
+    return if (@knex_connection = ConnectionPool.get(@url)) # found in pool
 
     throw "Unrecognized sql variant: #{full_url} for protocol: #{database_url.protocol}" unless protocol = PROTOCOLS[database_url.protocol]
 

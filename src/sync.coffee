@@ -9,14 +9,9 @@ _ = require 'underscore'
 Backbone = require 'backbone'
 inflection = require 'inflection'
 
-Queue = require 'backbone-orm/lib/queue'
-DatabaseURL = require 'backbone-orm/lib/database_url'
-Schema = require 'backbone-orm/lib/schema'
-Utils = require 'backbone-orm/lib/utils'
-ModelCache = require('backbone-orm/lib/cache/singletons').ModelCache
-QueryCache = require('backbone-orm/lib/cache/singletons').QueryCache
-ModelTypeID = require('backbone-orm/lib/cache/singletons').ModelTypeID
-modelExtensions = require 'backbone-orm/lib/extensions/model'
+BackboneORM = require 'backbone-orm'
+{Queue, Schema, Utils, DatabaseURL} = BackboneORM
+{ModelCache} = BackboneORM.CacheSingletons
 
 Connection = require './connection'
 SqlCursor = require './cursor'
@@ -29,7 +24,8 @@ class SqlSync
   constructor: (@model_type, options={}) ->
     @[key] = value for key, value of options
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
-    @model_type.model_id = ModelTypeID.generate(@model_type)
+    # @model_type.model_id = Utils.generateModelID(@model_type)
+    @model_type.model_id = Utils.guid()
     @schema = new Schema(@model_type)
     @backbone_adapter = require './backbone_adapter'
 
@@ -55,25 +51,19 @@ class SqlSync
     @getTable('master').insert(json, 'id').exec (err, res) =>
       return options.error(err) if err
       return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless res?.length
-      QueryCache.reset @model_type, (err) =>
-        return options.error?(err) if err
-        json.id = res[0]
-        options.success(json)
+      json.id = res[0]
+      options.success(json)
 
   update: (model, options) =>
     json = model.toJSON()
     @getTable('master').where('id', model.id).update(json).exec (err, res) =>
       return options.error(err) if err
-      QueryCache.reset @model_type, (err) =>
-        return options.error?(err) if err
-        options.success(json)
+      options.success(json)
 
   delete: (model, options) =>
     @getTable('master').where('id', model.id).del().exec (err, res) =>
       return options.error(err) if err
-      QueryCache.reset @model_type, (err) =>
-        return options.error?(err) if err
-        options.success()
+      options.success()
 
   ###################################
   # Backbone ORM - Class Extensions
@@ -92,9 +82,7 @@ class SqlSync
       ((model_json, callback) =>
         Utils.patchRemoveByJSON @model_type, model_json, (err) =>
           return callback(err) if err
-          @getTable('master').where('id', model_json.id).del().exec (err) =>
-            return callback(err) if err
-            QueryCache.reset @model_type, callback
+          @getTable('master').where('id', model_json.id).del().exec callback
       ), callback
 
   ###################################
@@ -144,5 +132,5 @@ module.exports = (type, options) ->
     return sync.table if method is 'tableName'
     return if sync[method] then sync[method].apply(sync, Array::slice.call(arguments, 1)) else undefined
 
-  modelExtensions(type)
+  Utils.configureModelType(type) # mixin extensions
   return ModelCache.configureSync(type, sync_fn)
