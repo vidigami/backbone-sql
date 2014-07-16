@@ -10,14 +10,10 @@
   "keywords": ["backbone", "orm", "backbone-orm", "sql", "mysql", "postgres", "pg", "sqlite", "sqlite3"],
   "engines": {"node": "*"},
   "scripts": {
-    "test": "npm run build; npm run test-postgres; npm run test-mysql; npm run test-rest-all",
-    "test-postgres": "NODE_ENV=test mocha --require test/parameters_postgres 'test/{issues,spec}/**/*.coffee' 'node_modules/backbone-orm/test/spec/**/*.coffee' --grep ''",
-    "test-mysql": "NODE_ENV=test mocha --require test/parameters_mysql 'test/{issues,spec}/**/*.coffee' 'node_modules/backbone-orm/test/spec/**/*.coffee' --grep ''",
-    "test-sqlite3": "NODE_ENV=test mocha --require test/parameters_sqlite3 'test/{issues,spec}/**/*.coffee' 'node_modules/backbone-orm/test/spec/**/*.coffee' --grep ''",
-
-    "pre-test-rest": "npm run backbone-rest vendor-install && cd node_modules/backbone-rest && npm ls >/dev/null || npm install",
-    "test-rest": "npm run backbone-rest vendor-install && mocha --require test/parameters_postgres --require backbone-rest/test/parameters_express3 'node_modules/backbone-rest/test/spec/**/*.tests.coffee' --grep ''",
-    "test-rest-all": "npm run pre-test-rest && test/test-rest.sh",
+    "test": "npm run build; npm run test-postgres; npm run test-mysql",
+    "test-postgres": "NODE_ENV=test mocha --require test/parameters_postgres --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",
+    "test-mysql": "NODE_ENV=test mocha --require test/parameters_mysql --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",
+    "test-sqlite3": "NODE_ENV=test mocha --require test/parameters_sqlite3 --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",
 
     "build": "coffee -o lib -c src",
     "watch": "coffee -o lib -w src",
@@ -34,6 +30,7 @@
     "backbone-rest": "git+https://github.com/vidigami/backbone-rest#develop",
     "supertest": "*",
     "express": "3.x",
+    "body-parser": "1.x",
     "mysql": "2.x",
     "pg": "3.x",
     "sqlite3": "2.x"
