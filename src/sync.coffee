@@ -7,11 +7,16 @@
 util = require 'util'
 _ = require 'underscore'
 Backbone = require 'backbone'
-inflection = require 'inflection'
+crypto = require 'crypto'
 
 BackboneORM = require 'backbone-orm'
 {Queue, Schema, Utils, DatabaseURL} = BackboneORM
 {ModelCache} = BackboneORM.CacheSingletons
+
+generateModelID = (model_type) ->
+  try url = _.result(new model_type(), 'url')
+  name_url = "#{url or ''}_#{model_type.model_name}"
+  return crypto.createHash('md5').update(name_url).digest('hex')
 
 Connection = require './connection'
 SqlCursor = require './cursor'
@@ -24,8 +29,7 @@ class SqlSync
   constructor: (@model_type, options={}) ->
     @[key] = value for key, value of options
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
-    # @model_type.model_id = Utils.generateModelID(@model_type)
-    @model_type.model_id = Utils.guid()
+    @model_type.model_id = generateModelID(@model_type)
     @schema = new Schema(@model_type)
     @backbone_adapter = require './backbone_adapter'
 
@@ -92,7 +96,7 @@ class SqlSync
     return if @is_initialized; @is_initialized = true
 
     @schema.initialize()
-    throw new Error("Missing url for model") unless url = _.result(new @model_type, 'url')
+    throw new Error("Missing url for model") unless url = _.result(new @model_type(), 'url')
     @connect(url)
 
   connect: (url) ->
@@ -100,7 +104,7 @@ class SqlSync
     @connections or= {all: [], master: new Connection(url), slaves: []}
 
     if @slaves?.length
-      @connections.slaves.push(connection = new Connection("#{slave_url}/#{@table}")) for slave_url in @slaves
+      @connections.slaves.push(new Connection("#{slave_url}/#{@table}")) for slave_url in @slaves
 
     # cache all connections
     @connections.all = [@connections.master].concat(@connections.slaves)
