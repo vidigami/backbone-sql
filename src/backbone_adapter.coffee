@@ -5,7 +5,6 @@
 ###
 
 util = require 'util'
-inflection = require 'inflection'
 _ = require 'underscore'
 
 module.exports = class SqlBackboneAdapter
