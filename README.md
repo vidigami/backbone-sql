@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/vidigami/backbone-sql.svg?branch=develop)](https://travis-ci.org/vidigami/backbone-sql)
+
 ![logo](https://github.com/vidigami/backbone-sql/raw/master/media/logo.png)
 
 PostgreSQL, MySQL, and SQLite3 storage for BackboneORM.
