@@ -13,11 +13,6 @@ BackboneORM = require 'backbone-orm'
 {Queue, Schema, Utils, DatabaseURL} = BackboneORM
 {ModelCache} = BackboneORM.CacheSingletons
 
-generateModelID = (model_type) ->
-  try url = _.result(new model_type(), 'url')
-  name_url = "#{url or ''}_#{model_type.model_name}"
-  return crypto.createHash('md5').update(name_url).digest('hex')
-
 Connection = require './connection'
 SqlCursor = require './cursor'
 DatabaseTools = require './database_tools'
@@ -29,9 +24,10 @@ class SqlSync
   constructor: (@model_type, options={}) ->
     @[key] = value for key, value of options
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
-    @model_type.model_id = generateModelID(@model_type)
     @schema = new Schema(@model_type, {id: {type: 'Integer'}})
     @backbone_adapter = require './backbone_adapter'
+
+    @no_self_reference = true # TODO: fix self-reference test
 
   ###################################
   # Classic Backbone Sync
