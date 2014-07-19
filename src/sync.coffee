@@ -17,6 +17,7 @@ SqlCursor = require './cursor'
 DatabaseTools = require './database_tools'
 
 DESTROY_BATCH_LIMIT = 1000
+CAPABILITIES = {self_reference: false, embed: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
 
 class SqlSync
 
@@ -24,13 +25,22 @@ class SqlSync
     @[key] = value for key, value of options
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
     @schema = new Schema(@model_type, {id: {type: 'Integer'}})
+
     @backbone_adapter = require './backbone_adapter'
 
-    @no_self_reference = true # TODO: fix self-reference test
+  # @no_doc
+  initialize: ->
+    return if @is_initialized; @is_initialized = true
+
+    @schema.initialize()
+    throw new Error("Missing url for model") unless url = _.result(new @model_type(), 'url')
+    @connect(url)
 
   ###################################
   # Classic Backbone Sync
   ###################################
+
+  # @no_doc
   read: (model, options) ->
     # a collection
     if model.models
@@ -45,6 +55,7 @@ class SqlSync
         return options.error(new Error "Model not found. Id #{model.id}") if not json
         options.success(json)
 
+  # @no_doc
   create: (model, options) =>
     json = model.toJSON()
     @getTable('master').insert(json, 'id').exec (err, res) =>
@@ -53,12 +64,14 @@ class SqlSync
       json.id = res[0]
       options.success(json)
 
+  # @no_doc
   update: (model, options) =>
     json = model.toJSON()
     @getTable('master').where('id', model.id).update(json).exec (err, res) =>
       return options.error(err) if err
       options.success(json)
 
+  # @no_doc
   delete: (model, options) =>
     @getTable('master').where('id', model.id).del().exec (err, res) =>
       return options.error(err) if err
@@ -67,13 +80,20 @@ class SqlSync
   ###################################
   # Backbone ORM - Class Extensions
   ###################################
+
+  # @no_doc
+  capabilities: -> CAPABILITIES
+
+  # @no_doc
   resetSchema: (options, callback) -> @db().resetSchema(options, callback)
 
+  # @no_doc
   cursor: (query={}) ->
     options = _.pick(@, ['model_type', 'backbone_adapter'])
     options.connection = @getConnection()
     return new SqlCursor(query, options)
 
+  # @no_doc
   destroy: (query, callback) ->
     [query, callback] = [{}, query] if arguments.length is 1
 
@@ -87,13 +107,8 @@ class SqlSync
   ###################################
   # Backbone SQL Sync - Custom Extensions
   ###################################
-  initialize: ->
-    return if @is_initialized; @is_initialized = true
 
-    @schema.initialize()
-    throw new Error("Missing url for model") unless url = _.result(new @model_type(), 'url')
-    @connect(url)
-
+  # @no_doc
   connect: (url) ->
     @table = (new DatabaseURL(url)).table
     @connections or= {all: [], master: new Connection(url), slaves: []}
@@ -133,3 +148,5 @@ module.exports = (type, options) ->
 
   Utils.configureModelType(type) # mixin extensions
   return BackboneORM.model_cache.configureSync(type, sync_fn)
+
+module.exports.capabilities = CAPABILITIES
