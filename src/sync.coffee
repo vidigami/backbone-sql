@@ -11,7 +11,6 @@ crypto = require 'crypto'
 
 BackboneORM = require 'backbone-orm'
 {Queue, Schema, Utils, DatabaseURL} = BackboneORM
-{ModelCache} = BackboneORM.CacheSingletons
 
 Connection = require './connection'
 SqlCursor = require './cursor'
@@ -133,4 +132,4 @@ module.exports = (type, options) ->
     return if sync[method] then sync[method].apply(sync, Array::slice.call(arguments, 1)) else undefined
 
   Utils.configureModelType(type) # mixin extensions
-  return ModelCache.configureSync(type, sync_fn)
+  return BackboneORM.model_cache.configureSync(type, sync_fn)
