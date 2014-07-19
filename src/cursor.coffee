@@ -4,11 +4,8 @@
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
 
-util = require 'util'
-_ = require 'underscore'
 Knex = require 'knex'
-
-{Cursor} = (require 'backbone-orm').sync
+{_, sync} = require 'backbone-orm'
 
 COMPARATORS =
   $lt: '<'
@@ -101,7 +98,7 @@ _extractCount = (count_json) ->
   count_info = count_json[0]
   return +(count_info[if count_info.hasOwnProperty('count(*)') then 'count(*)' else 'count'])
 
-module.exports = class SqlCursor extends Cursor
+module.exports = class SqlCursor extends sync.Cursor
 
   _parseConditions: (find, cursor) ->
     conditions = {wheres: [], where_conditionals: [], where_ins: [], where_nins: [], related_wheres: {}, joined_wheres: {}}

@@ -4,16 +4,10 @@
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
 
-_ = require 'underscore'
 Knex = require 'knex'
+{_, Queue, DatabaseURL, ConnectionPool} = require 'backbone-orm'
 
-BackboneORM = require 'backbone-orm'
-{Queue, DatabaseURL, ConnectionPool} = BackboneORM
-
-PROTOCOLS =
-  'mysql:': 'mysql', 'mysql2:': 'mysql'
-  'postgres:': 'postgres', 'pg:': 'postgres'
-  'sqlite:': 'sqlite3', 'sqlite3:': 'sqlite3'
+Utils = require './utils'
 
 class KnexConnection
   constructor: (@knex) ->
@@ -25,7 +19,7 @@ module.exports = class Connection
     @url = database_url.format({exclude_table: true, exclude_query: true}) # pool the raw endpoint without the table
     return if (@knex_connection = ConnectionPool.get(@url)) # found in pool
 
-    throw "Unrecognized sql variant: #{full_url} for protocol: #{database_url.protocol}" unless protocol = PROTOCOLS[database_url.protocol]
+    throw "Unrecognized sql variant: #{full_url} for protocol: #{database_url.protocol}" unless protocol = Utils.protocolType(database_url)
 
     if protocol is 'sqlite3'
       connection_info = {filename: database_url.host or ':memory:'}

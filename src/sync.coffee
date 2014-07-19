@@ -4,17 +4,12 @@
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
 
-util = require 'util'
-_ = require 'underscore'
-Backbone = require 'backbone'
-crypto = require 'crypto'
+{_, Backbone, Queue, Schema, Utils, JSONUtils, DatabaseURL} = BackboneORM = require 'backbone-orm'
 
-BackboneORM = require 'backbone-orm'
-{Queue, Schema, Utils, DatabaseURL} = BackboneORM
-
-Connection = require './connection'
 SqlCursor = require './cursor'
 DatabaseTools = require './database_tools'
+Connection = require './lib/connection'
+SQLUtils = require './lib/utils'
 
 DESTROY_BATCH_LIMIT = 1000
 CAPABILITIES = {self_reference: false, embed: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
@@ -26,7 +21,7 @@ class SqlSync
     @model_type.model_name = Utils.findOrGenerateModelName(@model_type)
     @schema = new Schema(@model_type, {id: {type: 'Integer'}})
 
-    @backbone_adapter = require './backbone_adapter'
+    @backbone_adapter = require './lib/backbone_adapter'
 
   # @no_doc
   initialize: ->
@@ -60,7 +55,7 @@ class SqlSync
     json = model.toJSON()
     @getTable('master').insert(json, 'id').exec (err, res) =>
       return options.error(err) if err
-      return options.error(new Error("Failed to create model with attributes: #{util.inspect(model.attributes)}")) unless res?.length
+      return options.error(new Error("Failed to create model with attributes: #{JSONUtils.stringify(model.attributes)}")) unless res?.length
       json.id = res[0]
       options.success(json)
 
@@ -80,9 +75,6 @@ class SqlSync
   ###################################
   # Backbone ORM - Class Extensions
   ###################################
-
-  # @no_doc
-  capabilities: -> CAPABILITIES
 
   # @no_doc
   resetSchema: (options, callback) -> @db().resetSchema(options, callback)
@@ -149,4 +141,4 @@ module.exports = (type, options) ->
   Utils.configureModelType(type) # mixin extensions
   return BackboneORM.model_cache.configureSync(type, sync_fn)
 
-module.exports.capabilities = CAPABILITIES
+module.exports.capabilities = (url) -> _.extend({json: SQLUtils.protocolType(url) is 'postgres'}, CAPABILITIES)

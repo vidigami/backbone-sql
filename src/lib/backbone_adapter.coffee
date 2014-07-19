@@ -4,8 +4,7 @@
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
 
-util = require 'util'
-_ = require 'underscore'
+{_} = require 'backbone-orm'
 
 module.exports = class SqlBackboneAdapter
   @nativeToAttributes: (json, schema) ->
