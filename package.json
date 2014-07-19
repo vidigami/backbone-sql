@@ -27,8 +27,8 @@
     "node": "*"
   },
   "scripts": {
-    "test": "npm run build; npm run test-postgres",
-    "test-all": "npm run build; npm run test-postgres; npm run test-mysql",
+    "test": "npm run build; npm run test-postgres; npm run test-mysql",
+    "test-quick": "NODE_ENV=test mocha --require test/parameters_postgres --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep '@no_cache'",
     "test-postgres": "NODE_ENV=test mocha --require test/parameters_postgres --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",
     "test-mysql": "NODE_ENV=test mocha --require test/parameters_mysql --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",
     "test-sqlite3": "NODE_ENV=test mocha --require test/parameters_sqlite3 --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",

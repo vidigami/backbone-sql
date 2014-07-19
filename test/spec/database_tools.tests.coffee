@@ -14,10 +14,11 @@ _.each option_sets, exports = (options) ->
   BASE_SCHEMA = options.schema or {}
   SYNC = options.sync
 
-
   describe "Sql db tools #{options.$parameter_tags or ''}#{options.$tags}", ->
     Flat = Reverse = Owner = null
     before ->
+      BackboneORM.configure {model_cache: {enabled: !!options.cache, max: 100}}
+
       class Flat extends Backbone.Model
         urlRoot: "#{DATABASE_URL}/flats"
         schema: _.extend BASE_SCHEMA,
@@ -44,16 +45,9 @@ _.each option_sets, exports = (options) ->
         }, BASE_SCHEMA)
         sync: SYNC(Owner)
 
-    after (callback) ->
-      queue = new Queue()
-      queue.defer (callback) -> BackboneORM.model_cache.reset(callback)
-      queue.defer (callback) -> Utils.resetSchemas [Flat], callback
-      queue.await callback
-    after -> Flat = Reverse = Owner = null
-
+    after (callback) -> Utils.resetSchemas [Flat], callback
     beforeEach (callback) ->
       queue = new Queue(1)
-      queue.defer (callback) -> BackboneORM.configure({model_cache: {enabled: !!options.cache, max: 100}}, callback)
       queue.defer (callback) -> Utils.resetSchemas [Flat], callback
       for model_type in [Flat, Reverse, Owner]
         do (model_type) -> queue.defer (callback) -> model_type.db().dropTableIfExists callback

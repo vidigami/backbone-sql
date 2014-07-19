@@ -16,26 +16,18 @@ _.each option_sets, exports = (options) ->
   SYNC = options.sync
 
   describe "Sql master slave selection #{options.$parameter_tags or ''}#{options.$tags}", ->
-
     Flat = null
     before ->
+      BackboneORM.configure {model_cache: {enabled: !!options.cache, max: 100}}
+
       class Flat extends Backbone.Model
         urlRoot: "#{DATABASE_URL}/flats"
         schema: _.extend BASE_SCHEMA,
           a_string: 'String'
         sync: SYNC(Flat, {slaves: [SLAVE_DATABASE_URL]})
-    after (callback) ->
-      queue = new Queue()
-      queue.defer (callback) -> BackboneORM.model_cache.reset(callback)
-      queue.defer (callback) -> Utils.resetSchemas [Flat], callback
-      queue.await callback
-    after -> Flat = null
 
-    beforeEach (callback) ->
-      queue = new Queue(1)
-      queue.defer (callback) -> BackboneORM.configure({model_cache: {enabled: !!options.cache, max: 100}}, callback)
-      queue.defer (callback) -> Utils.resetSchemas [Flat], callback
-      queue.await callback
+    after (callback) -> Utils.resetSchemas [Flat], callback
+    beforeEach (callback) -> Utils.resetSchemas [Flat], callback
 
     # TODO: This is wrong, maybe a way to force read from slave is needed
     it.skip 'Writes to the master database', (done) ->
