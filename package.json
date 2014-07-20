@@ -1,6 +1,6 @@
 {
   "name": "backbone-sql",
-  "version": "0.5.10",
+  "version": "0.6.0",
   "description": "PostgreSQL, MySQL, and SQLite3 storage for BackboneORM",
   "main": "./lib/index.js",
   "license": "MIT",
@@ -40,7 +40,7 @@
     "watch_dep": "npm run-script backbone-orm watch; npm run-script backbone-rest watch"
   },
   "devDependencies": {
-    "backbone-rest": "git+https://github.com/vidigami/backbone-rest#develop",
+    "backbone-rest": "git+https://github.com/vidigami/backbone-rest",
     "body-parser": "1.x",
     "chai": "*",
     "coffee-script": "*",
@@ -54,7 +54,7 @@
   "dependencies": {
     "underscore": "1.6.x",
     "backbone": "1.1.x",
-    "backbone-orm": "git+https://github.com/vidigami/backbone-orm#develop",
+    "backbone-orm": "git+https://github.com/vidigami/backbone-orm",
     "knex": "0.6.x"
   }
 }

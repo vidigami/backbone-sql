@@ -1,5 +1,8 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
+### 0.6.0
+* Upgraded to BackboneORM 0.6.x
+
 ### 0.5.10
 * Simplified database_tools and made compatible with the latest knex.
 
