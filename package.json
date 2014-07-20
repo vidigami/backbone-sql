@@ -40,7 +40,7 @@
     "watch_dep": "npm run-script backbone-orm watch; npm run-script backbone-rest watch"
   },
   "devDependencies": {
-    "backbone-rest": "git+https://github.com/vidigami/backbone-rest",
+    "backbone-rest": "0.6.x",
     "body-parser": "1.x",
     "chai": "*",
     "coffee-script": "*",
@@ -54,7 +54,7 @@
   "dependencies": {
     "underscore": "1.6.x",
     "backbone": "1.1.x",
-    "backbone-orm": "git+https://github.com/vidigami/backbone-orm",
+    "backbone-orm": "0.6.x",
     "knex": "0.6.x"
   }
 }
