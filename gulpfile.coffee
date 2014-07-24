@@ -12,7 +12,7 @@ gulp.task 'build', buildLibraries = ->
     .pipe(coffee({header: true})).on('error', gutil.log)
     .pipe(gulp.dest('./lib'))
 
-gulp.task 'watch', ['build'], (callback) ->
+gulp.task 'watch', ['build'], ->
   return gulp.watch './src/**/*.coffee', -> buildLibraries()
 
 MOCHA_DATABASE_OPTIONS =
@@ -23,9 +23,10 @@ MOCHA_DATABASE_OPTIONS =
 testFn = (options={}) -> (callback) ->
   gutil.log "Running tests for #{options.protocol} #{if options.quick then '(quick)' else ''}"
   mocha_options = _.extend((if options.quick then {grep: '@no_options'} else {}), MOCHA_DATABASE_OPTIONS[options.protocol])
-  return gulp.src("{node_modules/backbone-#{if options.quick then 'orm' else '{orm,rest}'}/,}test/{issues,spec/sync,spec/node}/**/*.tests.coffee")
-    .pipe(mocha(mocha_options))
+  gulp.src("{node_modules/backbone-#{if options.quick then 'orm' else '{orm,rest}'}/,}test/{issues,spec/sync}/**/*.tests.coffee")
+    .pipe(mocha(_.extend({reporter: 'dot'}, mocha_options)))
     .pipe es.writeArray callback
+  return # promises workaround: https://github.com/gulpjs/gulp/issues/455
 
 gulp.task 'test', ['build'], (callback) ->
   Async.series (testFn({protocol: protocol}) for protocol of MOCHA_DATABASE_OPTIONS), callback
