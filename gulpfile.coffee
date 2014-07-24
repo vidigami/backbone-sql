@@ -11,7 +11,6 @@ gulp.task 'build', buildLibraries = ->
   return gulp.src('./src/**/*.coffee')
     .pipe(coffee({header: true})).on('error', gutil.log)
     .pipe(gulp.dest('./lib'))
-  # return stream instead of explicit callback https://github.com/gulpjs/gulp/blob/master/docs/API.md
 
 gulp.task 'watch', ['build'], (callback) ->
   return gulp.watch './src/**/*.coffee', -> buildLibraries()
@@ -24,21 +23,20 @@ MOCHA_DATABASE_OPTIONS =
 testFn = (options={}) -> (callback) ->
   gutil.log "Running tests for #{options.protocol} #{if options.quick then '(quick)' else ''}"
   mocha_options = _.extend((if options.quick then {grep: '@no_options'} else {}), MOCHA_DATABASE_OPTIONS[options.protocol])
-  gulp.src("{node_modules/backbone-#{if options.quick then 'orm' else '{orm,rest}'}/,}test/{issues,spec}/**/*.tests.coffee")
+  return gulp.src("{node_modules/backbone-#{if options.quick then 'orm' else '{orm,rest}'}/,}test/{issues,spec/sync,spec/node}/**/*.tests.coffee")
     .pipe(mocha(mocha_options))
     .pipe es.writeArray callback
-  return # promises workaround: https://github.com/gulpjs/gulp/issues/455
 
 gulp.task 'test', ['build'], (callback) ->
   Async.series (testFn({protocol: protocol}) for protocol of MOCHA_DATABASE_OPTIONS), callback
-  return
+  return # promises workaround: https://github.com/gulpjs/gulp/issues/455
 gulp.task 'test-postgres', ['build'], testFn({protocol: 'postgres'})
 gulp.task 'test-mysql', ['build'], testFn({protocol: 'mysql'})
 gulp.task 'test-sqlite3', ['build'], testFn({protocol: 'sqlite3'})
 gulp.task 'test-quick', [], testFn({quick: true, protocol: 'postgres'})
 gulp.task 'test-quick-all', ['build'], (callback) ->
   Async.series (testFn({quick: true, protocol: protocol}) for protocol of MOCHA_DATABASE_OPTIONS), callback
-  return
+  return # promises workaround: https://github.com/gulpjs/gulp/issues/455
 
 # gulp.task 'benchmark', ['build'], (callback) ->
 #   (require './test/lib/run_benchmarks')(callback)
