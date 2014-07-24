@@ -30,10 +30,7 @@
     "test": "gulp test-postgres",
     "build": "coffee -o lib -c src",
     "watch": "coffee -o lib -w src",
-    "clean": "rm -rf lib/*",
-    "prepublish": "npm run build",
-    "build_dep": "npm run-script backbone-orm build; npm run-script backbone-rest build",
-    "watch_dep": "npm run-script backbone-orm watch; npm run-script backbone-rest watch"
+    "prepublish": "npm run build"
   },
   "devDependencies": {
     "async": "^0.9.0",
