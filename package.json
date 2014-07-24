@@ -27,7 +27,7 @@
     "node": "*"
   },
   "scripts": {
-    "test": "gulp test",
+    "test": "gulp test-postgres",
     "build": "coffee -o lib -c src",
     "watch": "coffee -o lib -w src",
     "clean": "rm -rf lib/*",
