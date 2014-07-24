@@ -28,8 +28,6 @@
   },
   "scripts": {
     "test": "gulp test-postgres",
-    "build": "coffee -o lib -c src",
-    "watch": "coffee -o lib -w src",
     "prepublish": "npm run build"
   },
   "devDependencies": {
