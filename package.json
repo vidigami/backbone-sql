@@ -27,11 +27,7 @@
     "node": "*"
   },
   "scripts": {
-    "test": "npm run build; npm run test-postgres",
-    "test-quick": "npm run build; NODE_ENV=test mocha --require test/parameters_postgres 'node_modules/backbone-orm/test/spec/**/*.tests.coffee' --grep '@no_cache @no_embed'",
-    "test-postgres": "NODE_ENV=test mocha --require test/parameters_postgres --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",
-    "test-mysql": "NODE_ENV=test mocha --require test/parameters_mysql --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",
-    "test-sqlite3": "NODE_ENV=test mocha --require test/parameters_sqlite3 --require backbone-rest/test/parameters_express4 '{node_modules/backbone-{orm,rest}/,}test/{issues,spec}/**/*.tests.coffee' --grep ''",
+    "test": "gulp test",
     "build": "coffee -o lib -c src",
     "watch": "coffee -o lib -w src",
     "clean": "rm -rf lib/*",
@@ -40,11 +36,17 @@
     "watch_dep": "npm run-script backbone-orm watch; npm run-script backbone-rest watch"
   },
   "devDependencies": {
+    "async": "^0.9.0",
     "backbone-rest": "git+https://github.com/vidigami/backbone-rest",
     "body-parser": "1.x",
     "chai": "*",
     "coffee-script": "*",
+    "event-stream": "^3.1.7",
     "express": "3.x",
+    "gulp": "^3.8.6",
+    "gulp-coffee": "^2.1.1",
+    "gulp-spawn-mocha": "^0.1.7-beta.3",
+    "gulp-util": "^3.0.0",
     "mocha": "^1.20.1",
     "mysql": "2.x",
     "pg": "3.x",
