@@ -21,10 +21,11 @@ MOCHA_DATABASE_OPTIONS =
   sqlite3: {require: ['test/parameters_sqlite3', 'backbone-rest/test/parameters_express4'], env: {NODE_ENV: 'test'}}
 
 testFn = (options={}) -> (callback) ->
-  gutil.log "Running tests for #{options.protocol} #{if options.quick then '(quick)' else ''}"
-  mocha_options = _.extend((if options.quick then {grep: '@no_options'} else {}), MOCHA_DATABASE_OPTIONS[options.protocol])
-  gulp.src("{node_modules/backbone-#{if options.quick then 'orm' else '{orm,rest}'}/,}test/{issues,spec/sync}/**/*.tests.coffee")
-    .pipe(mocha(_.extend({reporter: 'dot'}, mocha_options)))
+  tags = ("@#{tag.replace(/^[-]+/, '')}" for tag in process.argv.slice(3)).join(' ')
+  gutil.log "Running tests for #{options.protocol} #{tags}"
+
+  gulp.src("{node_modules/backbone-#{if tags.indexOf('@quick') >= 0 then 'orm' else '{orm,rest}'}/,}test/{issues,spec/sync}/**/*.tests.coffee")
+    .pipe(mocha(_.extend({reporter: 'dot', grep: tags}, MOCHA_DATABASE_OPTIONS[options.protocol])))
     .pipe es.writeArray callback
   return # promises workaround: https://github.com/gulpjs/gulp/issues/455
 
@@ -34,10 +35,6 @@ gulp.task 'test', ['build'], (callback) ->
 gulp.task 'test-postgres', ['build'], testFn({protocol: 'postgres'})
 gulp.task 'test-mysql', ['build'], testFn({protocol: 'mysql'})
 gulp.task 'test-sqlite3', ['build'], testFn({protocol: 'sqlite3'})
-gulp.task 'test-quick', [], testFn({quick: true, protocol: 'postgres'})
-gulp.task 'test-quick-all', ['build'], (callback) ->
-  Async.series (testFn({quick: true, protocol: protocol}) for protocol of MOCHA_DATABASE_OPTIONS), callback
-  return # promises workaround: https://github.com/gulpjs/gulp/issues/455
 
 # gulp.task 'benchmark', ['build'], (callback) ->
 #   (require './test/lib/run_benchmarks')(callback)
