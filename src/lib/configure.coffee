@@ -1,1 +1,1 @@
-module.exports = configure = require('backbone-orm').configure
+module.exports = require('backbone-orm').configure
