@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/vidigami/backbone-sql.svg?branch=develop)](https://travis-ci.org/vidigami/backbone-sql)
+
 ![logo](https://github.com/vidigami/backbone-sql/raw/master/media/logo.png)
 
 PostgreSQL, MySQL, and SQLite3 storage for BackboneORM.
@@ -73,14 +75,30 @@ Project.prototype.sync = SQLSync(Project);
 
 ### For Contributors
 
-To build the library for Node.js:
+To build the library for Node.js and browsers:
 
 ```
-$ npm run
+$ gulp build
 ```
 
-Please run tests before submitting a pull request.
+Please run tests before submitting a pull request:
+
+```
+$ gulp test --quick
+```
+
+and eventually all tests:
 
 ```
 $ npm test
+```
+
+# Test Variants
+
+You can run the following fine-grained tests to resolve problems with specific application frameworks
+
+```
+$ gulp test-postgres
+$ gulp test-mysql
+$ gulp test-sqlite3
 ```

@@ -1,41 +1,57 @@
 {
   "name": "backbone-sql",
-  "version": "0.5.8",
+  "version": "0.6.0",
   "description": "PostgreSQL, MySQL, and SQLite3 storage for BackboneORM",
   "main": "./lib/index.js",
   "license": "MIT",
   "author": "Gwilym Humphreys (https://github.com/gwilymhumphreys)",
-  "contributors": ["Kevin Malakoff (https://github.com/kmalakoff)"],
-  "repository": {"type": "git", "url": "https://github.com/vidigami/backbone-sql.git"},
-  "keywords": ["backbone", "orm", "backbone-orm", "sql", "mysql", "postgres", "pg", "sqlite", "sqlite3"],
-  "engines": {"node": "*"},
+  "contributors": [
+    "Kevin Malakoff (https://github.com/kmalakoff)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vidigami/backbone-sql.git"
+  },
+  "keywords": [
+    "backbone",
+    "orm",
+    "backbone-orm",
+    "sql",
+    "mysql",
+    "postgres",
+    "pg",
+    "sqlite",
+    "sqlite3"
+  ],
+  "engines": {
+    "node": "*"
+  },
   "scripts": {
-    "test": "npm run build; NODE_ENV=test mocha test/suite.coffee --compilers coffee:coffee-script/register --reporter spec --timeout 10000",
-    "build": "coffee -o lib -c src",
-    "watch": "coffee -o lib -w src",
-    "clean": "rm -rf lib/*",
-    "prepublish": "npm run build",
-
-    "build_dep": "npm run-script backbone-orm build; npm run-script backbone-rest build",
-    "watch_dep": "npm run-script backbone-orm watch; npm run-script backbone-rest watch"
+    "test": "gulp test-postgres",
+    "prepublish": "npm run build"
   },
   "devDependencies": {
+    "async": "*",
+    "backbone-rest": "0.6.x",
+    "body-parser": "1.x",
+    "chai": "*",
     "coffee-script": "*",
-    "mocha": "*",
-    "powerset": "0.0.x",
-    "backbone-rest": "0.5.x",
-    "supertest": "*",
+    "event-stream": "*",
     "express": "3.x",
-    "pg": "3.x",
+    "gulp": "*",
+    "gulp-coffee": "*",
+    "gulp-spawn-mocha": "*",
+    "gulp-util": "*",
+    "mocha": "*",
     "mysql": "2.x",
-    "sqlite3": "2.x"
+    "pg": "3.x",
+    "sqlite3": "2.x",
+    "supertest": "*"
   },
   "dependencies": {
-    "underscore": "1.x",
-    "backbone": "1.x",
-    "backbone-orm": "0.5.x",
-    "moment": "2.x",
-    "inflection": "1.x",
+    "underscore": "1.6.x",
+    "backbone": "1.1.x",
+    "backbone-orm": "0.6.x",
     "knex": "0.6.x"
   }
 }

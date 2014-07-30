@@ -1,14 +1,11 @@
 ###
-  backbone-sql.js 0.5.7
+  backbone-sql.js 0.6.0
   Copyright (c) 2013 Vidigami - https://github.com/vidigami/backbone-sql
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
 
-util = require 'util'
-_ = require 'underscore'
 Knex = require 'knex'
-
-Cursor = require 'backbone-orm/lib/cursor'
+{_, sync} = require 'backbone-orm'
 
 COMPARATORS =
   $lt: '<'
@@ -101,7 +98,7 @@ _extractCount = (count_json) ->
   count_info = count_json[0]
   return +(count_info[if count_info.hasOwnProperty('count(*)') then 'count(*)' else 'count'])
 
-module.exports = class SqlCursor extends Cursor
+module.exports = class SqlCursor extends sync.Cursor
 
   _parseConditions: (find, cursor) ->
     conditions = {wheres: [], where_conditionals: [], where_ins: [], where_nins: [], related_wheres: {}, joined_wheres: {}}
@@ -369,7 +366,7 @@ module.exports = class SqlCursor extends Cursor
     return json
 
   _prefixColumns: (model_type, fields) ->
-    columns = if fields then _.clone(fields) else model_type.schema().allColumns()
+    columns = if fields then _.clone(fields) else model_type.schema().columns()
     columns.push('id') unless 'id' in columns
     return ("#{model_type.tableName()}.#{col} as #{@_tablePrefix(model_type)}#{col}" for col in columns)
 

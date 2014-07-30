@@ -1,19 +1,13 @@
 ###
-  backbone-sql.js 0.5.7
+  backbone-sql.js 0.6.0
   Copyright (c) 2013 Vidigami - https://github.com/vidigami/backbone-sql
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
 
-_ = require 'underscore'
 Knex = require 'knex'
+{_, Queue, DatabaseURL, ConnectionPool} = require 'backbone-orm'
 
-ConnectionPool = require 'backbone-orm/lib/connection_pool'
-DatabaseUrl = require 'backbone-orm/lib/database_url'
-
-PROTOCOLS =
-  'mysql:': 'mysql', 'mysql2:': 'mysql'
-  'postgres:': 'postgres', 'pg:': 'postgres'
-  'sqlite:': 'sqlite3', 'sqlite3:': 'sqlite3'
+Utils = require './utils'
 
 class KnexConnection
   constructor: (@knex) ->
@@ -21,11 +15,11 @@ class KnexConnection
 
 module.exports = class Connection
   constructor: (full_url) ->
-    database_url = new DatabaseUrl(full_url)
+    database_url = new DatabaseURL(full_url)
     @url = database_url.format({exclude_table: true, exclude_query: true}) # pool the raw endpoint without the table
-    return if @knex_connection = ConnectionPool.get(@url) # found in pool
+    return if (@knex_connection = ConnectionPool.get(@url)) # found in pool
 
-    throw "Unrecognized sql variant: #{full_url} for protocol: #{database_url.protocol}" unless protocol = PROTOCOLS[database_url.protocol]
+    throw "Unrecognized sql variant: #{full_url} for protocol: #{database_url.protocol}" unless protocol = Utils.protocolType(database_url)
 
     if protocol is 'sqlite3'
       connection_info = {filename: database_url.host or ':memory:'}
