@@ -18,10 +18,10 @@ COMPARATOR_KEYS = _.keys(COMPARATORS)
 _appendCondition = (conditions, key, value) ->
 
   if value?.$in
-    if value.$in?.length then conditions.where_ins.push({key: key, value: value.$in}) else (conditions.abort = true; return conditions)
+    if value.$in?.length then conditions.wheres.push({method: 'whereIn', key: key, value: value.$in}) else (conditions.abort = true; return conditions)
 
   else if value?.$nin
-    if value.$nin?.length then conditions.where_nins.push({key: key, value: value.$nin})
+    if value.$nin?.length then conditions.wheres.push({method: 'whereNotIn', key: key, value: value.$nin})
 
   # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
   else if _.isObject(value) and ops_length = _.size(mongo_ops = _.pick(value, COMPARATOR_KEYS))
@@ -55,7 +55,9 @@ _appendConditionalWhere = (query, key, condition, table, compound) ->
 
 _appendWhere = (query, conditions, table) ->
   for condition in conditions.wheres
-    if _.isNull(condition.value)
+    if condition.method
+      query[condition.method](_columnName(condition.key, table), condition.value)
+    else if _.isNull(condition.value)
       query.whereNull(_columnName(condition.key, table))
     else
       query.where(_columnName(condition.key, table), condition.value)
@@ -72,12 +74,6 @@ _appendWhere = (query, conditions, table) ->
       query.whereNotNull(_columnName(condition.key, table))
     else
       _appendConditionalWhere(query, condition.key, condition, table, false)
-
-  for condition in conditions.where_ins
-    query.whereIn(_columnName(condition.key, table), condition.value)
-
-  for condition in conditions.where_nins
-    query.whereNotIn(_columnName(condition.key, table), condition.value)
 
   return query
 
@@ -99,9 +95,10 @@ _extractCount = (count_json) ->
   return +(count_info[if count_info.hasOwnProperty('count(*)') then 'count(*)' else 'count'])
 
 module.exports = class SqlCursor extends sync.Cursor
+  verbose: false
 
   _parseConditions: (find, cursor) ->
-    conditions = {wheres: [], where_conditionals: [], where_ins: [], where_nins: [], related_wheres: {}, joined_wheres: {}}
+    conditions = {wheres: [], where_conditionals: [], related_wheres: {}, joined_wheres: {}}
     related_wheres = {}
     for key, value of find
       throw new Error "Unexpected undefined for query key '#{key}'" if _.isUndefined(value)
@@ -115,7 +112,7 @@ module.exports = class SqlCursor extends sync.Cursor
       # Many to Many relationships may be queried on the foreign key of the join table
       else if (reverse_relation = @model_type.reverseRelation(key)) and reverse_relation.join_table
         relation = reverse_relation.reverse_relation
-        conditions.joined_wheres[relation.key] or= {wheres: [], where_conditionals: [], where_ins: [], where_nins: []}
+        conditions.joined_wheres[relation.key] or= {wheres: [], where_conditionals: []}
         _appendCondition(conditions.joined_wheres[relation.key], key, value)
       else
         _appendCondition(conditions, key, value)
@@ -125,7 +122,7 @@ module.exports = class SqlCursor extends sync.Cursor
 
     if cursor?.$ids
       (conditions.abort = true; return conditions) unless cursor.$ids.length
-      conditions.where_ins.push({key: 'id', value: cursor.$ids})
+      conditions.wheres.push({method: 'whereIn', key: 'id', value: cursor.$ids})
 
     return conditions
 
@@ -143,6 +140,19 @@ module.exports = class SqlCursor extends sync.Cursor
     catch err
       return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
 
+    # only select specific fields
+    if @_cursor.$distinct
+      $fields = if @_cursor.$white_list then _.intersection(@_cursor.$distinct, @_cursor.$white_list) else @_cursor.$distinct
+      if @hasCursorQuery('$count')
+        #TODO: fix this
+        return query.select(@connection.raw("count(distinct #{$fields.join(', ')})")).exec (err, count_json) => callback(err, _extractCount(count_json))
+    else if @_cursor.$values
+      $fields = if @_cursor.$white_list then _.intersection(@_cursor.$values, @_cursor.$white_list) else @_cursor.$values
+    else if @_cursor.$select
+      $fields = if @_cursor.$white_list then _.intersection(@_cursor.$select, @_cursor.$white_list) else @_cursor.$select
+    else if @_cursor.$white_list
+      $fields = @_cursor.$white_list
+
     # count and exists when there is not a join table
     if @hasCursorQuery('$count') or @hasCursorQuery('$exists')
       @_appendRelatedWheres(query)
@@ -151,14 +161,6 @@ module.exports = class SqlCursor extends sync.Cursor
         return query.count('*').exec (err, count_json) => callback(null, _extractCount(count_json))
       else
         return query.count('*').limit(1).exec (err, count_json) => callback(null, _extractCount(count_json) > 0)
-
-    # only select specific fields
-    if @_cursor.$values
-      $fields = if @_cursor.$white_list then _.intersection(@_cursor.$values, @_cursor.$white_list) else @_cursor.$values
-    else if @_cursor.$select
-      $fields = if @_cursor.$white_list then _.intersection(@_cursor.$select, @_cursor.$white_list) else @_cursor.$select
-    else if @_cursor.$white_list
-      $fields = @_cursor.$white_list
 
     if @_cursor.$include
       @include_keys = if _.isArray(@_cursor.$include) then @_cursor.$include else [@_cursor.$include]
@@ -198,11 +200,13 @@ module.exports = class SqlCursor extends sync.Cursor
     @_appendJoinedWheres(query)
 
     $columns or= if @joined then @_prefixColumns(@model_type, $fields) else $fields
-    query.select($columns)
+    if @_cursor.$distinct
+      query.distinct($columns)
+    else
+      query.select($columns)
     _appendSort(query, @_cursor.$sort) if @_cursor.$sort
 
     if @verbose
-    # if true
       console.log '\n----------'
       console.log query.toString()
       console.log '----------'

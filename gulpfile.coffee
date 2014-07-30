@@ -25,7 +25,7 @@ testFn = (options={}) -> (callback) ->
   gutil.log "Running tests for #{options.protocol} #{tags}"
 
   gulp.src("{node_modules/backbone-#{if tags.indexOf('@quick') >= 0 then 'orm' else '{orm,rest}'}/,}test/{issues,spec/sync}/**/*.tests.coffee")
-    .pipe(mocha(_.extend({reporter: 'dot', grep: tags}, MOCHA_DATABASE_OPTIONS[options.protocol])))
+    .pipe(mocha(_.extend({reporter: 'spec', grep: tags}, MOCHA_DATABASE_OPTIONS[options.protocol])))
     .pipe es.writeArray callback
   return # promises workaround: https://github.com/gulpjs/gulp/issues/455
 
