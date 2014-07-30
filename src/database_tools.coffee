@@ -130,7 +130,6 @@ module.exports = class DatabaseTools
   # Will create a table and add columns as required
   # Will not remove columns
   ensureSchema: (options, callback) =>
-
     (callback = options; options = {}) if arguments.length is 1
 
     return callback() if @ensuring
@@ -152,7 +151,6 @@ module.exports = class DatabaseTools
   # Should only be called once the table exists - can't do column checks unless the table has been created
   # Should only be called by @ensureSchema, sets @ensuring to false when complete
   ensureSchemaForExistingTable: (options, callback) =>
-
     @editTable()
     queue = new Queue(1)
     queue.defer (callback) => @ensureColumn('id', 'increments', ['primary'], callback)
