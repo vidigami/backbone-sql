@@ -141,4 +141,4 @@ module.exports = (type, options) ->
   Utils.configureModelType(type) # mixin extensions
   return BackboneORM.model_cache.configureSync(type, sync_fn)
 
-module.exports.capabilities = (url) -> _.extend({json: SQLUtils.protocolType(url) is 'postgres'}, CAPABILITIES)
+module.exports.capabilities = (url) -> _.extend({json: SQLUtils.protocolType(url) is 'postgres', unique: SQLUtils.protocolType(url) is 'postgres'}, CAPABILITIES)
