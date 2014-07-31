@@ -77,18 +77,6 @@ _appendWhere = (query, conditions, table) ->
 
   return query
 
-_appendSort = (query, sorts) ->
-  sorts = if _.isArray(sorts) then sorts else [sorts]
-  for sort in sorts
-    if sort[0] is '-'
-      dir = 'desc'
-      col = sort.substr(1)
-    else
-      dir = 'asc'
-      col = sort
-    query.orderBy(col, dir)
-  return query
-
 _extractCount = (count_json) ->
   return 0 unless count_json?.length
   count_info = count_json[0]
@@ -140,18 +128,42 @@ module.exports = class SqlCursor extends sync.Cursor
     catch err
       return callback("Query failed for model: #{@model_type.model_name} with error: #{err}")
 
-    # only select specific fields
-    if @_cursor.$distinct
-      $fields = if @_cursor.$white_list then _.intersection(@_cursor.$distinct, @_cursor.$white_list) else @_cursor.$distinct
-      if @hasCursorQuery('$count')
-        #TODO: fix this
-        return query.select(@connection.raw("count(distinct #{$fields.join(', ')})")).exec (err, count_json) => callback(err, _extractCount(count_json))
-    else if @_cursor.$values
+    if @_cursor.$sort
+      @_cursor.$sort = if _.isArray(@_cursor.$sort) then @_cursor.$sort else [@_cursor.$sort]
+
+    if @_cursor.$values
       $fields = if @_cursor.$white_list then _.intersection(@_cursor.$values, @_cursor.$white_list) else @_cursor.$values
     else if @_cursor.$select
       $fields = if @_cursor.$white_list then _.intersection(@_cursor.$select, @_cursor.$white_list) else @_cursor.$select
     else if @_cursor.$white_list
       $fields = @_cursor.$white_list
+
+    # This implementation uses a postgres window function when there are columns other than the $unique fields requested
+    # TODO: implementation that works for all dbs
+    if @_cursor.$unique
+      $fields or= @_columns(@model_type, $fields)
+
+      if @hasCursorQuery('$count')
+        query.count().from(@connection.distinct(@_cursor.$unique).from(@model_type.tableName()).as('count_query'))
+        return query.exec (err, count_json) => callback(err, _extractCount(count_json))
+
+      # We're not selecting any fields outside of those in $unique, so we can use distinct
+      if _.difference($fields, @_cursor.$unique).length is 0
+        query.distinct($fields)
+
+      # Other fields are required - uses partition, a postgres window function
+      else
+        @_cursor.$sort or= []
+        rank_field = @_cursor.$unique[0]
+        [sort_field, sort_dir] = @_parseSortField(@_cursor.$sort?[0] or 'id')
+        subquery = @connection.select(@connection.raw("#{$fields.join(', ')}, rank() over (partition by #{rank_field} order by #{sort_field} #{sort_dir})"))
+        subquery.from(@model_type.tableName()).as('subquery')
+        query.select($fields).from(subquery).where('rank', 1)
+
+      @_appendSort(query)
+      @_appendLimits(query)
+
+      return @_exec query, callback
 
     # count and exists when there is not a join table
     if @hasCursorQuery('$count') or @hasCursorQuery('$exists')
@@ -189,9 +201,7 @@ module.exports = class SqlCursor extends sync.Cursor
 
     else
       # TODO: do these make sense with joins? apply them after un-joining the result?
-      query.limit(1) if @_cursor.$one
-      query.limit(@_cursor.$limit) if @_cursor.$limit
-      query.offset(@_cursor.$offset) if @_cursor.$offset
+      @_appendLimits(query)
 
     # Append where conditions and join if needed for the form `related_model.field = value`
     @_appendRelatedWheres(query)
@@ -199,19 +209,17 @@ module.exports = class SqlCursor extends sync.Cursor
     # Append where conditions and join if needed for the form `manytomanyrelation_id.field = value`
     @_appendJoinedWheres(query)
 
-    $columns or= if @joined then @_prefixColumns(@model_type, $fields) else $fields
-    if @_cursor.$distinct
-      query.distinct($columns)
-    else
-      query.select($columns)
-    _appendSort(query, @_cursor.$sort) if @_cursor.$sort
+    $columns or= if @joined then @_prefixColumns(@model_type, $fields) else @_columns(@model_type, $fields)
+    query.select($columns)
+    @_appendSort(query)
+    @_exec query, callback
 
+  _exec: (query, callback) =>
     if @verbose
       console.log '\n----------'
       console.log query.toString()
       console.log '----------'
-
-    return query.exec (err, json) =>
+    query.exec (err, json) =>
       return callback(new Error("Query failed for model: #{@model_type.model_name} with error: #{err}")) if err
       json = @_joinedResultsToJSON(json) if @joined
 
@@ -251,7 +259,29 @@ module.exports = class SqlCursor extends sync.Cursor
         })
     else
       callback(null, json)
+      
+  _appendLimits: (query) ->
+    query.limit(1) if @_cursor.$one
+    query.limit(@_cursor.$limit) if @_cursor.$limit
+    query.offset(@_cursor.$offset) if @_cursor.$offset
+    return query
 
+  _parseSortField: (sort) ->
+    if sort[0] is '-'
+      dir = 'desc'
+      col = sort.substr(1)
+    else
+      dir = 'asc'
+      col = sort
+    return [col, dir]
+
+  _appendSort: (query) ->
+    return query unless @_cursor.$sort
+    for sort in @_cursor.$sort
+      [col, dir] = @_parseSortField(sort)
+      query.orderBy(col, dir)
+    return query
+    
   # Make another query to get the complete set of related objects when they have been fitered by a where clause
   _appendCompleteRelations: (json, callback) ->
     new_query = @connection(@model_type.tableName())
@@ -368,6 +398,11 @@ module.exports = class SqlCursor extends sync.Cursor
             model_json[include_key] = related_json
 
     return json
+
+  _columns: (model_type, fields) ->
+    columns = if fields then _.clone(fields) else model_type.schema().columns()
+    columns.push('id') unless 'id' in columns
+    return columns
 
   _prefixColumns: (model_type, fields) ->
     columns = if fields then _.clone(fields) else model_type.schema().columns()
