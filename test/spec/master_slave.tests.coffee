@@ -30,7 +30,7 @@ _.each BackboneORM.TestUtils.optionSets(), exports = (options) ->
     # TODO: This is wrong, maybe a way to force read from slave is needed
     it.skip 'Writes to the master database', (done) ->
       flat = new Flat({a_string: 'hello'})
-      flat.save {}, (err, saved) ->
+      flat.save (err, saved) ->
         assert.ok(!err, "No errors: #{err}")
 
         Flat.findOne (err, shouldnt_exist) ->
