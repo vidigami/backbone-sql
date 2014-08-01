@@ -12,7 +12,10 @@ Connection = require './lib/connection'
 SQLUtils = require './lib/utils'
 
 DESTROY_BATCH_LIMIT = 1000
-CAPABILITIES = {self_reference: false, embed: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
+CAPABILITIES =
+  mysql: {embed: false, json: false, unique: false, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
+  postgres: {embed: false, json: true, unique: true, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
+  sqlite: {embed: false, json: false, unique: false, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
 
 class SqlSync
 
@@ -141,4 +144,4 @@ module.exports = (type, options) ->
   Utils.configureModelType(type) # mixin extensions
   return BackboneORM.model_cache.configureSync(type, sync_fn)
 
-module.exports.capabilities = (url) -> _.extend({json: SQLUtils.protocolType(url) is 'postgres', unique: SQLUtils.protocolType(url) is 'postgres'}, CAPABILITIES)
+module.exports.capabilities = (url) -> CAPABILITIES[SQLUtils.protocolType(url)] or {}
