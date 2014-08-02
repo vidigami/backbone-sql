@@ -13,9 +13,9 @@ SQLUtils = require './lib/utils'
 
 DESTROY_BATCH_LIMIT = 1000
 CAPABILITIES =
-  mysql: {embed: false, json: false, unique: false, manual_ids: false, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
-  postgres: {embed: false, json: true, unique: true, manual_ids: false, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
-  sqlite: {embed: false, json: false, unique: false, manual_ids: false, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
+  mysql: {embed: false, json: false, unique: false, manual_ids: false, dynamic: false, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
+  postgres: {embed: false, json: true, unique: true, manual_ids: false, dynamic: false, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
+  sqlite: {embed: false, json: false, unique: false, manual_ids: false, dynamic: false, self_reference: false} # TODO: fix self-reference test and remove as a capabilty from all syncs
 
 class SqlSync
 
