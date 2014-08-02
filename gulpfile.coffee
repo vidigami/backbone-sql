@@ -24,11 +24,10 @@ testFn = (options={}) -> (callback) ->
   tags = ("@#{tag.replace(/^[-]+/, '')}" for tag in process.argv.slice(3)).join(' ')
   gutil.log "Running tests for #{options.protocol} #{tags}"
 
-  files = [
-    "{node_modules/backbone-#{if tags.indexOf('@quick') >= 0 then 'orm' else '{orm,rest}'}/,}test/{issues,spec/sync}/**/*.tests.coffee"
-    "test/**/*.tests.coffee"
-  ]
-  gulp.src(files)
+  gulp.src([
+      "node_modules/backbone-orm/test/{issues,spec/sync}/**/*.tests.coffee"
+      "#{if tags.indexOf('@quick') >= 0 then '' else '{node_modules/backbone-rest/,}'}test/spec/**/*.tests.coffee"
+    ])
     .pipe(mocha(_.extend({reporter: 'dot', grep: tags}, MOCHA_DATABASE_OPTIONS[options.protocol])))
     .pipe es.writeArray callback
   return # promises workaround: https://github.com/gulpjs/gulp/issues/455
