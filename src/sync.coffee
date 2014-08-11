@@ -66,14 +66,17 @@ class SqlSync
   update: (model, options) =>
     json = model.toJSON()
     @getTable('master').where('id', model.id).update(json).exec (err, res) =>
-      return options.error(err) if err
+      return options.error(model, err) if err
       options.success(json)
 
-  # @no_doc
-  delete: (model, options) =>
+  # @nodoc
+  delete: (model, options) -> @deleteCB(model, (err) => if err then options.error(err) else options.success())
+
+  # @nodoc
+  deleteCB: (model, callback) =>
     @getTable('master').where('id', model.id).del().exec (err, res) =>
-      return options.error(err) if err
-      options.success()
+      return callback(err) if err
+      Utils.patchRemove(@model_type, model, callback)
 
   ###################################
   # Backbone ORM - Class Extensions
@@ -91,13 +94,7 @@ class SqlSync
   # @no_doc
   destroy: (query, callback) ->
     [query, callback] = [{}, query] if arguments.length is 1
-
-    @model_type.each _.extend({$each: {limit: DESTROY_BATCH_LIMIT, json: true}}, query),
-      ((model_json, callback) =>
-        Utils.patchRemoveByJSON @model_type, model_json, (err) =>
-          return callback(err) if err
-          @getTable('master').where('id', model_json.id).del().exec callback
-      ), callback
+    @model_type.each _.extend({$each: {limit: DESTROY_BATCH_LIMIT, json: true}}, query), @deleteCB, callback
 
   ###################################
   # Backbone SQL Sync - Custom Extensions
