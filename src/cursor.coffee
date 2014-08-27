@@ -247,7 +247,7 @@ module.exports = class SqlCursor extends sync.Cursor
 
     if @hasCursorQuery('$page')
       query = @connection(@model_type.tableName())
-      _appendWhere(query, @_conditions)
+      _appendWhere(query, @_conditions, @model_type.tableName())
       @_appendRelatedWheres(query)
       @_appendJoinedWheres(query)
       query.count('*').exec (err, count_json) =>
