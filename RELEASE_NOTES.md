@@ -1,7 +1,10 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
-### 0.6.3
+### 0.6.4
 * Bug fix for join tables
+
+### 0.6.3
+* Bug fix for patch remove
 
 ### 0.6.2
 * Added dynamic and manual_ids capabilities
