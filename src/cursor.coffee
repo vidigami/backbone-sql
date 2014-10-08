@@ -259,7 +259,7 @@ module.exports = class SqlCursor extends sync.Cursor
         })
     else
       callback(null, json)
-      
+
   _appendLimits: (query) ->
     query.limit(1) if @_cursor.$one
     query.limit(@_cursor.$limit) if @_cursor.$limit
@@ -281,7 +281,7 @@ module.exports = class SqlCursor extends sync.Cursor
       [col, dir] = @_parseSortField(sort)
       query.orderBy(col, dir)
     return query
-    
+
   # Make another query to get the complete set of related objects when they have been fitered by a where clause
   _appendCompleteRelations: (json, callback) ->
     new_query = @connection(@model_type.tableName())
@@ -295,6 +295,7 @@ module.exports = class SqlCursor extends sync.Cursor
 
     new_query.select((@_prefixColumns(@model_type, ['id'])).concat(to_columns))
     new_query.exec (err, new_json) =>
+      return callback(err) if err
       relation_json = @_joinedResultsToJSON(new_json)
       for placeholder in relation_json
         model = _.find(json, (test) -> test.id is placeholder.id)
