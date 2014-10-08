@@ -1,5 +1,8 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
+### 0.6.5
+* Bug fix for missing callback
+
 ### 0.6.4
 * Bug fix for join tables
 

@@ -1,5 +1,5 @@
 ###
-  backbone-sql.js 0.6.4
+  backbone-sql.js 0.6.5
   Copyright (c) 2013 Vidigami - https://github.com/vidigami/backbone-sql
   License: MIT (http://www.opensource.org/licenses/mit-license.php)
 ###
