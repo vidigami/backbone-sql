@@ -56,7 +56,7 @@ class Project extends Backbone.Model
 ```javascript
 var SQLSync = require('backbone-sql').sync;
 
-var Project = Backbon.Model.extend({
+var Project = Backbone.Model.extend({
 
   // Database connection and table name are specified with the urlRoot
   urlRoot: 'postgres://username:password@localhost:27017/projects',
