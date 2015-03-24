@@ -28,7 +28,7 @@
   },
   "scripts": {
     "test": "gulp test-postgres",
-    "prepublish": "npm run build"
+    "prepublish": "gulp build"
   },
   "devDependencies": {
     "async": "*",
@@ -49,8 +49,8 @@
     "supertest": "0.13.x"
   },
   "dependencies": {
-    "underscore": "1.7.x",
-    "backbone": "1.1.x",
+    "underscore": "1.x",
+    "backbone": "1.x",
     "backbone-orm": "0.7.x",
     "knex": "0.6.x"
   }
