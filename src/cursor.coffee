@@ -23,6 +23,9 @@ _appendCondition = (conditions, key, value) ->
   else if value?.$nin
     if value.$nin?.length then conditions.wheres.push({method: 'whereNotIn', key: key, value: value.$nin})
 
+  else if value?.$exists?
+    conditions.wheres.push({method: (if value?.$exists then 'whereNotNull' else 'whereNull'), key: key})
+
   # Transform a conditional of type {key: {$lt: 5}} to ('key', '<', 5)
   else if _.isObject(value) and ops_length = _.size(mongo_ops = _.pick(value, COMPARATOR_KEYS))
     operations = []

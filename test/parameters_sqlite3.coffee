@@ -1,6 +1,7 @@
 global.__test__parameters = module.exports =
   schema:
     created_at: 'DateTime'
+    created2_at: 'DateTime'
     updated_at: 'DateTime'
     name: ['String', indexed: true]
     # TODO: json only works on the postgres backend
