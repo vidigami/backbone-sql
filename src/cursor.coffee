@@ -86,7 +86,7 @@ _extractCount = (count_json) ->
   return +(count_info[if count_info.hasOwnProperty('count(*)') then 'count(*)' else 'count'])
 
 module.exports = class SqlCursor extends sync.Cursor
-  verbose: false
+  verbose: true
 
   _parseConditions: (find, cursor) ->
     conditions = {wheres: [], where_conditionals: [], related_wheres: {}, joined_wheres: {}}
@@ -249,11 +249,25 @@ module.exports = class SqlCursor extends sync.Cursor
         json = json.splice(0, Math.min(json.length, @_cursor.$limit))
 
     if @hasCursorQuery('$page')
-      query = @connection(@model_type.tableName())
+      query = @connection()
       _appendWhere(query, @_conditions, @model_type.tableName())
       @_appendRelatedWheres(query)
       @_appendJoinedWheres(query)
-      query.count('*').exec (err, count_json) =>
+
+      if @_cursor.$unique
+        subquery = @connection.distinct(@_cursor.$unique)
+        subquery.from(@model_type.tableName()).as('subquery')
+        query.from(subquery)
+      else
+        query.from(@model_type.tableName())
+
+      query.count('*')
+      if @verbose
+        console.log '\n----------'
+        console.log query.toString()
+        console.log '----------'
+
+      query.exec (err, count_json) =>
         return callback(err) if err
         callback(null, {
           offset: @_cursor.$offset or 0
