@@ -86,7 +86,7 @@ _extractCount = (count_json) ->
   return +(count_info[if count_info.hasOwnProperty('count(*)') then 'count(*)' else 'count'])
 
 module.exports = class SqlCursor extends sync.Cursor
-  verbose: true
+  verbose: false
 
   _parseConditions: (find, cursor) ->
     conditions = {wheres: [], where_conditionals: [], related_wheres: {}, joined_wheres: {}}
@@ -263,7 +263,7 @@ module.exports = class SqlCursor extends sync.Cursor
 
       query.count('*')
       if @verbose
-        console.log '\n----------'
+        console.log '\n---------- counting rows for $page'
         console.log query.toString()
         console.log '----------'
 
