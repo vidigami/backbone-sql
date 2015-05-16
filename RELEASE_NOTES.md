@@ -2,6 +2,8 @@ Please refer to the following release notes when upgrading your version of Backb
 
 ### 0.6.5
 * Bug fix for missing callback
+* Bug fix $exists checks for nulls
+* improve row counts for $unique
 
 ### 0.6.4
 * Bug fix for join tables
