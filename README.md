@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/vidigami/backbone-sql.svg?branch=develop)](https://travis-ci.org/vidigami/backbone-sql)
+[![Build Status](https://travis-ci.org/vidigami/backbone-sql.svg?branch=master)](https://travis-ci.org/vidigami/backbone-sql)
 
 ![logo](https://github.com/vidigami/backbone-sql/raw/master/media/logo.png)
 
