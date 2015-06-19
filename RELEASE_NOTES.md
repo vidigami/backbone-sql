@@ -1,5 +1,8 @@
 Please refer to the following release notes when upgrading your version of BackboneSQL.
 
+### 0.6.6
+* Added support for mongodb style $or queries for non-related model queries
+
 ### 0.6.5
 * Bug fix for missing callback
 * Bug fix $exists checks for nulls

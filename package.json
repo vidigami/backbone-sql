@@ -1,12 +1,13 @@
 {
   "name": "backbone-sql",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "PostgreSQL, MySQL, and SQLite3 storage for BackboneORM",
   "main": "./lib/index.js",
   "license": "MIT",
   "author": "Gwilym Humphreys (https://github.com/gwilymhumphreys)",
   "contributors": [
     "Kevin Malakoff (https://github.com/kmalakoff)"
+    "Ryan Carniato (https://github.com/ryansolid)"
   ],
   "repository": {
     "type": "git",
