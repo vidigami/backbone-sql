@@ -56,6 +56,10 @@ _appendConditionalWhere = (query, key, condition, table, compound) ->
   else
     query[whereMethod](_columnName(key, table), condition.operator, condition.value)
 
+_appendOrWhere = (query, conditions, table, compound) ->
+  whereMethod = if compound then 'orWhere' else 'where'
+  query[whereMethod] -> _appendWhere(@, conditions, table)
+
 _appendWhere = (query, conditions, table) ->
   for condition in conditions.wheres
     if condition.method
@@ -78,6 +82,14 @@ _appendWhere = (query, conditions, table) ->
     else
       _appendConditionalWhere(query, condition.key, condition, table, false)
 
+  if conditions.where_ors?.length
+    query.where ->
+      nested_query = @
+      condition = conditions.where_ors.pop()
+      _appendOrWhere(nested_query, condition, table, false)
+      for condition in conditions.where_ors
+        _appendOrWhere(nested_query, condition, table, true)
+
   return query
 
 _extractCount = (count_json) ->
@@ -89,7 +101,7 @@ module.exports = class SqlCursor extends sync.Cursor
   verbose: false
 
   _parseConditions: (find, cursor) ->
-    conditions = {wheres: [], where_conditionals: [], related_wheres: {}, joined_wheres: {}}
+    conditions = {wheres: [], where_conditionals: [], related_wheres: {}, joined_wheres: {}, where_ors: []}
     related_wheres = {}
     for key, value of find
       throw new Error "Unexpected undefined for query key '#{key}'" if _.isUndefined(value)
@@ -110,6 +122,9 @@ module.exports = class SqlCursor extends sync.Cursor
 
     # Parse conditions on related models in the same way
     conditions.related_wheres[relation] = @_parseConditions(related_conditions) for relation, related_conditions of related_wheres
+
+    if cursor?.$or?.length
+      conditions.where_ors = (@_parseConditions(condition) for condition in cursor?.$or)
 
     if cursor?.$ids
       (conditions.abort = true; return conditions) unless cursor.$ids.length
